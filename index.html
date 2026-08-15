@@ -242,11 +242,23 @@
 
   form.nova-cotacao{
     display: grid;
-    grid-template-columns: 1.2fr 0.8fr 1.5fr auto;
+    grid-template-columns: 1.1fr 0.7fr 0.6fr 0.7fr 1.2fr auto;
     gap: 8px;
   }
   @media (max-width: 720px){
     form.nova-cotacao{ grid-template-columns: 1fr 1fr; }
+  }
+  .nota-cotacao{
+    font-size: 11px;
+    color: var(--marfim-fraca);
+    display: block;
+    margin-top: 2px;
+  }
+  .aviso-unidade{
+    font-size: 11px;
+    color: var(--terracota);
+    display: block;
+    margin-top: 2px;
   }
 
   /* SUMMARY TABLE */
@@ -513,9 +525,51 @@
     return (valor || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
   }
 
+  // ---------- CONVERSÃO DE UNIDADES DA COTAÇÃO ----------
+  // Permite cotar um preço para uma quantidade diferente da quantidade final do item
+  // (ex: cotação de 250g quando o item da lista precisa de 1kg) e projeta o preço
+  // automaticamente para a quantidade total da lista.
+  const CONVERSOES_UNIDADE = {
+    kg:{base:'g',fator:1000}, kilo:{base:'g',fator:1000}, kilos:{base:'g',fator:1000},
+    quilo:{base:'g',fator:1000}, quilos:{base:'g',fator:1000},
+    g:{base:'g',fator:1}, gr:{base:'g',fator:1}, grama:{base:'g',fator:1}, gramas:{base:'g',fator:1},
+    l:{base:'ml',fator:1000}, lt:{base:'ml',fator:1000}, lts:{base:'ml',fator:1000},
+    litro:{base:'ml',fator:1000}, litros:{base:'ml',fator:1000},
+    ml:{base:'ml',fator:1}
+  };
+
+  function paraUnidadeBase(valor, unidade){
+    const norm = normalizar(unidade);
+    const conv = CONVERSOES_UNIDADE[norm];
+    const v = parseFloat(valor) || 0;
+    if(conv) return { valor: v * conv.fator, base: conv.base };
+    // unidade não reconhecida (ex: "un", "cx", "fardo"): só é comparável com ela mesma
+    return { valor: v, base: norm || 'un' };
+  }
+
+  // Calcula o fator multiplicador entre a quantidade cotada e a quantidade total do item
+  function fatorProjecao(item, cotacao){
+    const qtdItem = (item.qtd && item.qtd > 0) ? item.qtd : 1;
+    const qtdCot = (cotacao.qtdCotacao && cotacao.qtdCotacao > 0) ? cotacao.qtdCotacao : 1;
+    const unidCot = (cotacao.unidadeCotacao || item.unidade || '').trim();
+    const baseItem = paraUnidadeBase(qtdItem, item.unidade);
+    const baseCot = paraUnidadeBase(qtdCot, unidCot);
+    if(baseItem.base === baseCot.base && baseCot.valor > 0){
+      return { fator: baseItem.valor / baseCot.valor, compativel: true };
+    }
+    // unidades não reconhecidas/incompatíveis: assume proporção direta entre os números informados
+    return { fator: qtdItem / qtdCot, compativel: false };
+  }
+
+  // Preço da cotação já projetado para a quantidade total do item na lista
+  function precoProjetado(item, cotacao){
+    return cotacao.preco * fatorProjecao(item, cotacao).fator;
+  }
+
   function melhorCotacao(item){
     if(!item.cotacoes || item.cotacoes.length === 0) return null;
-    return item.cotacoes.reduce((menor, atual) => atual.preco < menor.preco ? atual : menor, item.cotacoes[0]);
+    return item.cotacoes.reduce((menor, atual) =>
+      precoProjetado(item, atual) < precoProjetado(item, menor) ? atual : menor, item.cotacoes[0]);
   }
 
   function linkRota(endereco){
@@ -840,7 +894,7 @@
     itens.forEach(item => {
       const melhor = melhorCotacao(item);
       const qtd = item.qtd && item.qtd > 0 ? item.qtd : 1;
-      const subtotal = melhor ? melhor.preco * qtd : 0;
+      const subtotal = melhor ? precoProjetado(item, melhor) : 0;
       if(melhor) totalGeral += subtotal;
       (item.cotacoes || []).forEach(c => mercadosUnicos.add(c.mercado.trim().toLowerCase()));
 
@@ -888,7 +942,7 @@
       tr.innerHTML = `
         <td>${escapeHtml(item.nome)}</td>
         <td class="preco-mono">${qtd} ${escapeHtml(item.unidade || 'un')}</td>
-        <td class="preco-mono">${melhor ? formatarMoeda(melhor.preco) : '—'}</td>
+        <td class="preco-mono">${melhor ? `${formatarMoeda(melhor.preco)}<span class="nota-cotacao">p/ ${escapeHtml(String((melhor.qtdCotacao && melhor.qtdCotacao > 0) ? melhor.qtdCotacao : 1))} ${escapeHtml(melhor.unidadeCotacao || item.unidade || 'un')}</span>` : '—'}</td>
         <td>${melhor ? escapeHtml(melhor.mercado) : '—'}</td>
         <td class="preco-mono">${melhor ? formatarMoeda(subtotal) : '—'}</td>
       `;
@@ -946,9 +1000,9 @@
       <thead>
         <tr>
           <th>Mercado</th>
-          <th>Preço</th>
+          <th>Preço cotado</th>
+          <th>Projetado p/ lista</th>
           <th>Endereço</th>
-          <th></th>
           <th></th>
         </tr>
       </thead>
@@ -957,16 +1011,20 @@
     const tbody = tabela.querySelector('tbody');
     item.cotacoes
       .slice()
-      .sort((a,b) => a.preco - b.preco)
+      .sort((a,b) => precoProjetado(item, a) - precoProjetado(item, b))
       .forEach(c => {
         const ehMelhor = melhor && c.id === melhor.id;
+        const { fator, compativel } = fatorProjecao(item, c);
+        const projetado = c.preco * fator;
+        const qtdCotDisplay = (c.qtdCotacao && c.qtdCotacao > 0) ? c.qtdCotacao : 1;
+        const unidCotDisplay = c.unidadeCotacao || item.unidade || 'un';
         const tr = document.createElement('tr');
         if(ehMelhor) tr.className = 'linha-melhor';
         tr.innerHTML = `
           <td>${escapeHtml(c.mercado)}</td>
-          <td class="preco-mono">${formatarMoeda(c.preco)} ${ehMelhor ? '<span class="selo">Melhor preço</span>' : ''}</td>
+          <td class="preco-mono">${formatarMoeda(c.preco)}<span class="nota-cotacao">p/ ${escapeHtml(String(qtdCotDisplay))} ${escapeHtml(unidCotDisplay)}</span></td>
+          <td class="preco-mono">${formatarMoeda(projetado)} ${ehMelhor ? '<span class="selo">Melhor preço</span>' : ''}${!compativel ? '<span class="aviso-unidade">⚠ unidades diferentes, conferir</span>' : ''}</td>
           <td>${c.endereco ? `<a class="link-rota" href="${linkRota(c.endereco)}" target="_blank" rel="noopener">Ver rota →</a>` : '<span class="aviso">Sem endereço</span>'}</td>
-          <td></td>
           <td><button class="btn-fantasma btn-pequeno" data-remover-cotacao="${item.id}|${c.id}">Remover</button></td>
         `;
         tbody.appendChild(tr);
@@ -996,6 +1054,8 @@
     form.innerHTML = `
       <input type="text" placeholder="Mercado (ex: Assaí)" required data-campo="mercado">
       <input type="number" step="0.01" min="0" placeholder="Preço (R$)" required data-campo="preco">
+      <input type="number" step="0.01" min="0" placeholder="Qtd. cotada" value="1" data-campo="qtdCotacao" title="Quantidade que esse preço cobre (ex: 250)">
+      <input type="text" placeholder="Un." value="${escapeHtml(item.unidade || '')}" data-campo="unidadeCotacao" title="Unidade da quantidade cotada (ex: g, kg, ml, L). Se for diferente da unidade da lista, o preço é convertido automaticamente.">
       <input type="text" placeholder="Endereço do mercado" data-campo="endereco">
       <button type="submit" class="btn-dourado btn-pequeno">Adicionar cotação</button>
     `;
@@ -1004,10 +1064,13 @@
       e.preventDefault();
       const mercado = form.querySelector('[data-campo="mercado"]').value.trim();
       const preco = parseFloat(form.querySelector('[data-campo="preco"]').value);
+      const qtdCotacaoValor = parseFloat(form.querySelector('[data-campo="qtdCotacao"]').value);
+      const qtdCotacao = (!isNaN(qtdCotacaoValor) && qtdCotacaoValor > 0) ? qtdCotacaoValor : 1;
+      const unidadeCotacao = form.querySelector('[data-campo="unidadeCotacao"]').value.trim() || item.unidade || '';
       const endereco = form.querySelector('[data-campo="endereco"]').value.trim();
       if(!mercado || isNaN(preco)) return;
       item.cotacoes = item.cotacoes || [];
-      item.cotacoes.push({ id: uid(), mercado, preco, endereco });
+      item.cotacoes.push({ id: uid(), mercado, preco, qtdCotacao, unidadeCotacao, endereco });
       salvar();
       render();
       // reabrir o card depois do redraw
