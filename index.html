@@ -248,6 +248,19 @@
   @media (max-width: 720px){
     form.nova-cotacao{ grid-template-columns: 1fr 1fr; }
   }
+  form.editar-item{
+    background: var(--vinho);
+    border: 1px solid var(--dourado-fraco);
+    border-radius: 10px;
+    padding: 14px;
+    grid-template-columns: 1.6fr 1fr 0.8fr 0.8fr auto;
+    gap: 10px;
+    align-items: end;
+    margin-bottom: 16px;
+  }
+  @media (max-width: 720px){
+    form.editar-item{ grid-template-columns: 1fr 1fr; }
+  }
   .nota-cotacao{
     font-size: 11px;
     color: var(--marfim-fraca);
@@ -901,6 +914,7 @@
       // card
       const card = document.createElement('div');
       card.className = 'item-card';
+      card.dataset.itemId = item.id;
       const mercadosItem = (item.cotacoes || []).map(c => c.mercado).join(' ');
       card.dataset.busca = normalizar(`${item.nome} ${item.categoria || ''} ${mercadosItem}`);
 
@@ -925,12 +939,18 @@
       const corpo = document.createElement('div');
       corpo.className = 'item-corpo';
 
+      corpo.appendChild(criarFormEditarItem(item));
       corpo.appendChild(criarTabelaCotacoes(item, melhor));
       corpo.appendChild(criarFormCotacao(item));
 
       const acoesItem = document.createElement('div');
       acoesItem.style.marginTop = '12px';
-      acoesItem.innerHTML = `<button class="btn-perigo btn-pequeno" data-remover-item="${item.id}">Remover item</button>`;
+      acoesItem.style.display = 'flex';
+      acoesItem.style.gap = '8px';
+      acoesItem.innerHTML = `
+        <button class="btn-fantasma btn-pequeno" data-editar-item="${item.id}">Editar item</button>
+        <button class="btn-perigo btn-pequeno" data-remover-item="${item.id}">Remover item</button>
+      `;
       corpo.appendChild(acoesItem);
 
       card.appendChild(cabecalho);
@@ -964,6 +984,23 @@
         itens = itens.filter(i => i.id !== id);
         salvar();
         render();
+      });
+    });
+
+    // listeners de edição de item
+    lista.querySelectorAll('[data-editar-item]').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const card = btn.closest('.item-card');
+        const formEditar = card ? card.querySelector('form.editar-item') : null;
+        if(!formEditar) return;
+        const abrir = formEditar.style.display === 'none' || !formEditar.style.display;
+        formEditar.style.display = abrir ? 'grid' : 'none';
+        if(abrir){
+          card.querySelector('.item-corpo').classList.add('aberto');
+          const campoNome = formEditar.querySelector('[data-campo="nome"]');
+          if(campoNome) campoNome.focus();
+        }
       });
     });
   }
@@ -1047,6 +1084,57 @@
 
     wrap.appendChild(tabela);
     return wrap;
+  }
+
+  function criarFormEditarItem(item){
+    const form = document.createElement('form');
+    form.className = 'editar-item';
+    form.style.display = 'none';
+    form.innerHTML = `
+      <div class="campo">
+        <label>Item</label>
+        <input type="text" required data-campo="nome" value="${escapeHtml(item.nome)}">
+      </div>
+      <div class="campo">
+        <label>Categoria</label>
+        <input type="text" data-campo="categoria" value="${escapeHtml(item.categoria || '')}">
+      </div>
+      <div class="campo">
+        <label>Quantidade</label>
+        <input type="number" min="0" step="0.01" data-campo="qtd" value="${item.qtd || 1}">
+      </div>
+      <div class="campo">
+        <label>Unidade</label>
+        <input type="text" data-campo="unidade" value="${escapeHtml(item.unidade || '')}">
+      </div>
+      <div style="display:flex; gap:8px;">
+        <button type="submit" class="btn-dourado btn-pequeno">Salvar</button>
+        <button type="button" class="btn-fantasma btn-pequeno" data-cancelar-edicao>Cancelar</button>
+      </div>
+    `;
+    form.addEventListener('click', e => e.stopPropagation());
+    form.querySelector('[data-cancelar-edicao]').addEventListener('click', () => {
+      form.style.display = 'none';
+    });
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const nome = form.querySelector('[data-campo="nome"]').value.trim();
+      const categoria = form.querySelector('[data-campo="categoria"]').value.trim();
+      const qtdValor = parseFloat(form.querySelector('[data-campo="qtd"]').value);
+      const unidade = form.querySelector('[data-campo="unidade"]').value.trim();
+      if(!nome) return;
+      item.nome = nome;
+      item.categoria = categoria;
+      item.qtd = (!isNaN(qtdValor) && qtdValor > 0) ? qtdValor : 1;
+      item.unidade = unidade;
+      salvar();
+      render();
+      setTimeout(() => {
+        const card = document.querySelector(`[data-item-id="${item.id}"]`);
+        if(card) card.querySelector('.item-corpo').classList.add('aberto');
+      });
+    });
+    return form;
   }
 
   function criarFormCotacao(item){    const form = document.createElement('form');
