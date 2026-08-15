@@ -449,15 +449,54 @@
   @media (prefers-reduced-motion: reduce){
     *{ transition: none !important; scroll-behavior: auto !important; }
   }
+
+  .tela-carregando{
+    position: fixed;
+    inset: 0;
+    background: var(--vinho);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+  }
+  .tela-carregando-conteudo{
+    text-align: center;
+    color: var(--marfim-fraca);
+    font-size: 14px;
+  }
+  .spinner{
+    width: 28px; height: 28px;
+    border: 3px solid var(--borda);
+    border-top-color: var(--dourado);
+    border-radius: 50%;
+    margin: 0 auto 14px;
+    animation: girar 0.8s linear infinite;
+  }
+  @keyframes girar{ to{ transform: rotate(360deg); } }
+
+  .status-sincronizacao{
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--oliva);
+    margin: 10px 0 0;
+  }
+  .status-sincronizacao.status-erro{ color: var(--terracota); }
 </style>
 </head>
 <body>
-<div class="wrap">
+<div id="telaCarregando" class="tela-carregando">
+  <div class="tela-carregando-conteudo">
+    <div class="spinner"></div>
+    <p>Carregando dados salvos…</p>
+  </div>
+</div>
+<div class="wrap" id="wrapPrincipal" style="display:none;">
 
   <header class="hero">
     <div class="eyebrow">Planejamento · Cerimônia</div>
     <h1>Orçamento de Comidas do Casamento</h1>
     <p class="subtitulo">Cadastre cada item, cotado em mercados diferentes, e veja na hora onde sai mais barato — com a rota até o mercado.</p>
+    <p class="status-sincronizacao" id="statusSincronizacao"></p>
 
     <div class="totais">
       <div class="total-card">
@@ -539,13 +578,14 @@
           <th>Item</th>
           <th>Qtd.</th>
           <th>Melhor preço</th>
+          <th>Marca</th>
           <th>Mercado</th>
           <th>Subtotal</th>
         </tr>
       </thead>
       <tbody id="corpoResumo"></tbody>
       <tfoot>
-        <tr><td colspan="4">Total</td><td id="totalResumo">R$ 0,00</td></tr>
+        <tr><td colspan="5">Total</td><td id="totalResumo">R$ 0,00</td></tr>
       </tfoot>
     </table>
   </section>
@@ -581,40 +621,108 @@
 
 <script>
 (function(){
-  const CHAVE = 'orcamento-casamento-v1';
-  const CHAVE_MERCADOS = 'orcamento-casamento-mercados-v1';
+  const CHAVE = 'itens';
+  const CHAVE_MERCADOS = 'mercados';
+  const CHAVE_LOCAL_ITENS = 'orcamento-casamento-v1';
+  const CHAVE_LOCAL_MERCADOS = 'orcamento-casamento-mercados-v1';
   let itens = [];
   let mercados = [];
 
-  function carregar(){
-    try{
-      const bruto = localStorage.getItem(CHAVE);
-      itens = bruto ? JSON.parse(bruto) : [];
-    }catch(e){
-      itens = [];
-    }
-  }
-  function salvar(){
-    try{
-      localStorage.setItem(CHAVE, JSON.stringify(itens));
-    }catch(e){
-      console.error('Não foi possível salvar localmente.', e);
+  // Usa armazenamento em nuvem (compartilhado entre qualquer dispositivo/pessoa que
+  // acesse esta mesma página) quando disponível. Se não estiver disponível (por exemplo,
+  // o arquivo aberto fora do Claude), cai para o armazenamento local do navegador.
+  const TEM_NUVEM = !!(window.storage && typeof window.storage.get === 'function' && typeof window.storage.set === 'function');
+
+  function marcarStatusSincronizacao(status){
+    const el = document.getElementById('statusSincronizacao');
+    if(!el) return;
+    if(status === 'ok'){
+      el.textContent = TEM_NUVEM ? '☁ Sincronizado — visível para quem acessar esta página' : '💾 Salvo apenas neste navegador';
+      el.classList.remove('status-erro');
+    } else if(status === 'salvando'){
+      el.textContent = '☁ Salvando…';
+      el.classList.remove('status-erro');
+    } else if(status === 'erro'){
+      el.textContent = '⚠ Não foi possível salvar agora. Tente novamente em instantes.';
+      el.classList.add('status-erro');
     }
   }
 
-  function carregarMercados(){
-    try{
-      const bruto = localStorage.getItem(CHAVE_MERCADOS);
-      mercados = bruto ? JSON.parse(bruto) : [];
-    }catch(e){
-      mercados = [];
+  async function carregar(){
+    if(TEM_NUVEM){
+      try{
+        const r = await window.storage.get(CHAVE, true);
+        itens = (r && r.value) ? JSON.parse(r.value) : [];
+      }catch(e){
+        itens = [];
+      }
+    } else {
+      try{
+        const bruto = localStorage.getItem(CHAVE_LOCAL_ITENS);
+        itens = bruto ? JSON.parse(bruto) : [];
+      }catch(e){
+        itens = [];
+      }
     }
   }
-  function salvarMercados(){
-    try{
-      localStorage.setItem(CHAVE_MERCADOS, JSON.stringify(mercados));
-    }catch(e){
-      console.error('Não foi possível salvar os mercados.', e);
+  async function salvar(){
+    marcarStatusSincronizacao('salvando');
+    if(TEM_NUVEM){
+      try{
+        const r = await window.storage.set(CHAVE, JSON.stringify(itens), true);
+        if(!r) throw new Error('falha ao salvar itens na nuvem');
+        marcarStatusSincronizacao('ok');
+      }catch(e){
+        console.error('Não foi possível salvar na nuvem.', e);
+        marcarStatusSincronizacao('erro');
+      }
+    } else {
+      try{
+        localStorage.setItem(CHAVE_LOCAL_ITENS, JSON.stringify(itens));
+        marcarStatusSincronizacao('ok');
+      }catch(e){
+        console.error('Não foi possível salvar localmente.', e);
+        marcarStatusSincronizacao('erro');
+      }
+    }
+  }
+
+  async function carregarMercados(){
+    if(TEM_NUVEM){
+      try{
+        const r = await window.storage.get(CHAVE_MERCADOS, true);
+        mercados = (r && r.value) ? JSON.parse(r.value) : [];
+      }catch(e){
+        mercados = [];
+      }
+    } else {
+      try{
+        const bruto = localStorage.getItem(CHAVE_LOCAL_MERCADOS);
+        mercados = bruto ? JSON.parse(bruto) : [];
+      }catch(e){
+        mercados = [];
+      }
+    }
+  }
+  async function salvarMercados(){
+    marcarStatusSincronizacao('salvando');
+    if(TEM_NUVEM){
+      try{
+        const r = await window.storage.set(CHAVE_MERCADOS, JSON.stringify(mercados), true);
+        if(!r) throw new Error('falha ao salvar mercados na nuvem');
+        marcarStatusSincronizacao('ok');
+      }catch(e){
+        console.error('Não foi possível salvar os mercados na nuvem.', e);
+        marcarStatusSincronizacao('erro');
+      }
+    } else {
+      try{
+        localStorage.setItem(CHAVE_LOCAL_MERCADOS, JSON.stringify(mercados));
+        marcarStatusSincronizacao('ok');
+      }catch(e){
+        console.error('Não foi possível salvar os mercados localmente.', e);
+        marcarStatusSincronizacao('erro');
+      }
     }
   }
 
@@ -1049,6 +1157,7 @@
         <td>${escapeHtml(item.nome)}</td>
         <td class="preco-mono">${qtd} ${escapeHtml(item.unidade || 'un')}</td>
         <td class="preco-mono">${melhor ? `${formatarMoeda(melhor.preco)}<span class="nota-cotacao">p/ ${escapeHtml(String((melhor.qtdCotacao && melhor.qtdCotacao > 0) ? melhor.qtdCotacao : 1))} ${escapeHtml(melhor.unidadeCotacao || item.unidade || 'un')}</span>` : '—'}</td>
+        <td>${melhor && melhor.marca ? escapeHtml(melhor.marca) : '—'}</td>
         <td>${melhor ? escapeHtml(melhor.mercado) : '—'}</td>
         <td class="preco-mono">${melhor ? formatarMoeda(subtotal) : '—'}</td>
       `;
@@ -1123,6 +1232,7 @@
       <thead>
         <tr>
           <th>Mercado</th>
+          <th>Marca</th>
           <th>Preço cotado</th>
           <th>Projetado p/ lista</th>
           <th>Endereço</th>
@@ -1145,6 +1255,7 @@
         if(ehMelhor) tr.className = 'linha-melhor';
         tr.innerHTML = `
           <td>${escapeHtml(c.mercado)}</td>
+          <td>${c.marca ? escapeHtml(c.marca) : '<span class="aviso">—</span>'}</td>
           <td class="preco-mono">${formatarMoeda(c.preco)}<span class="nota-cotacao">p/ ${escapeHtml(String(qtdCotDisplay))} ${escapeHtml(unidCotDisplay)}</span></td>
           <td class="preco-mono">${formatarMoeda(projetado)} ${ehMelhor ? '<span class="selo">Melhor preço</span>' : ''}${!compativel ? '<span class="aviso-unidade">⚠ unidades diferentes, conferir</span>' : ''}</td>
           <td>${c.endereco ? `<a class="link-rota" href="${linkRota(c.endereco)}" target="_blank" rel="noopener">Ver rota →</a>` : '<span class="aviso">Sem endereço</span>'}</td>
@@ -1304,6 +1415,17 @@
     return form;
   }
 
+  function obterMarcasConhecidas(){
+    const marcas = new Set();
+    itens.forEach(it => {
+      if(it.marca) marcas.add(it.marca.trim());
+      (it.cotacoes || []).forEach(c => {
+        if(c.marca) marcas.add(c.marca.trim());
+      });
+    });
+    return Array.from(marcas).filter(Boolean).sort((a,b) => a.localeCompare(b, 'pt-BR'));
+  }
+
   function criarFormCotacao(item){
     const form = document.createElement('form');
     form.className = 'nova-cotacao';
@@ -1312,6 +1434,8 @@
       .sort((a,b) => a.nome.localeCompare(b.nome, 'pt-BR'))
       .map(m => `<option value="${m.id}">${escapeHtml(m.nome)}</option>`)
       .join('');
+    const marcasSugeridas = obterMarcasConhecidas();
+    const idDatalist = `marcas-sugeridas-${item.id}`;
     form.innerHTML = `
       <select required data-campo="mercadoSelect">
         <option value="">Selecione o mercado…</option>
@@ -1320,6 +1444,10 @@
       </select>
       <input type="text" placeholder="Nome do novo mercado" data-campo="novoMercadoNome" style="display:none;">
       <input type="text" placeholder="Endereço do novo mercado" data-campo="novoMercadoEndereco" style="display:none;">
+      <input type="text" placeholder="Marca (opcional)" data-campo="marcaCotacao" list="${idDatalist}" value="${escapeHtml(item.marca || '')}" title="Nesse mercado o produto pode ser de uma marca diferente — informe qual.">
+      <datalist id="${idDatalist}">
+        ${marcasSugeridas.map(m => `<option value="${escapeHtml(m)}"></option>`).join('')}
+      </datalist>
       <input type="number" step="0.01" min="0" placeholder="Preço (R$)" required data-campo="preco">
       <input type="number" step="0.01" min="0" placeholder="Qtd. cotada" value="1" data-campo="qtdCotacao" title="Quantidade que esse preço cobre (ex: 250)">
       <input type="text" placeholder="Un." value="${escapeHtml(item.unidade || '')}" data-campo="unidadeCotacao" title="Unidade da quantidade cotada (ex: g, kg, ml, L). Se for diferente da unidade da lista, o preço é convertido automaticamente.">
@@ -1349,6 +1477,7 @@
       const qtdCotacaoValor = parseFloat(form.querySelector('[data-campo="qtdCotacao"]').value);
       const qtdCotacao = (!isNaN(qtdCotacaoValor) && qtdCotacaoValor > 0) ? qtdCotacaoValor : 1;
       const unidadeCotacao = form.querySelector('[data-campo="unidadeCotacao"]').value.trim() || item.unidade || '';
+      const marcaCotacao = form.querySelector('[data-campo="marcaCotacao"]').value.trim();
       if(!selecionado || isNaN(preco)) return;
 
       let mercadoObj;
@@ -1375,6 +1504,7 @@
         id: uid(),
         mercado: mercadoObj.nome,
         endereco: mercadoObj.endereco || '',
+        marca: marcaCotacao,
         preco, qtdCotacao, unidadeCotacao
       });
       salvar();
@@ -1519,10 +1649,21 @@
     }
   });
 
-  carregar();
-  carregarMercados();
-  renderMercados();
-  render();
+  async function iniciar(){
+    const telaCarregando = document.getElementById('telaCarregando');
+    const wrapPrincipal = document.getElementById('wrapPrincipal');
+    try{
+      await Promise.all([carregar(), carregarMercados()]);
+    } finally {
+      if(telaCarregando) telaCarregando.style.display = 'none';
+      if(wrapPrincipal) wrapPrincipal.style.display = '';
+      renderMercados();
+      render();
+      marcarStatusSincronizacao('ok');
+    }
+  }
+
+  iniciar();
 })();
 </script>
 </body>
