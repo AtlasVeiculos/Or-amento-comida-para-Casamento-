@@ -1,0 +1,679 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Orçamento do Casamento</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Work+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --vinho: #2B1220;
+    --vinho-2: #3D1B2E;
+    --vinho-3: #4A2136;
+    --marfim: #F3ECDD;
+    --marfim-fraca: #C9BEA8;
+    --dourado: #C9A050;
+    --dourado-fraco: #8B7440;
+    --oliva: #8A9A6B;
+    --terracota: #B5533C;
+    --borda: rgba(243,236,221,0.12);
+  }
+  *{ box-sizing: border-box; }
+  html{ scroll-behavior: smooth; }
+  body{
+    margin:0;
+    background: var(--vinho);
+    color: var(--marfim);
+    font-family: 'Work Sans', sans-serif;
+    line-height: 1.5;
+    padding-bottom: 80px;
+  }
+  .wrap{ max-width: 920px; margin: 0 auto; padding: 32px 20px 0; }
+
+  /* HERO */
+  header.hero{
+    padding: 40px 0 28px;
+    border-bottom: 1px solid var(--borda);
+    position: relative;
+  }
+  .eyebrow{
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--dourado);
+    margin-bottom: 10px;
+  }
+  h1{
+    font-family:'Fraunces', serif;
+    font-weight: 600;
+    font-size: clamp(28px, 5vw, 42px);
+    margin: 0 0 6px;
+    letter-spacing: -0.01em;
+  }
+  .subtitulo{ color: var(--marfim-fraca); font-size: 15px; max-width: 46ch; }
+
+  .totais{
+    display:flex;
+    gap: 28px;
+    margin-top: 26px;
+    flex-wrap: wrap;
+  }
+  .total-card{
+    background: var(--vinho-2);
+    border: 1px solid var(--borda);
+    border-radius: 10px;
+    padding: 16px 20px;
+    min-width: 180px;
+  }
+  .total-card .label{
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: .1em;
+    color: var(--marfim-fraca);
+  }
+  .total-card .valor{
+    font-family:'Fraunces', serif;
+    font-size: 28px;
+    color: var(--dourado);
+    margin-top: 4px;
+  }
+
+  /* SECTIONS */
+  section{ margin-top: 40px; }
+  .titulo-secao{
+    font-family:'Fraunces', serif;
+    font-size: 20px;
+    font-weight: 600;
+    margin-bottom: 14px;
+    display:flex;
+    align-items:center;
+    gap: 10px;
+  }
+  .titulo-secao::before{
+    content:"";
+    width: 18px; height: 1px;
+    background: var(--dourado);
+    display:inline-block;
+  }
+
+  /* FORM ADD ITEM */
+  form.novo-item{
+    background: var(--vinho-2);
+    border: 1px solid var(--borda);
+    border-radius: 12px;
+    padding: 18px;
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr 1fr auto;
+    gap: 10px;
+    align-items: end;
+  }
+  @media (max-width: 720px){
+    form.novo-item{ grid-template-columns: 1fr 1fr; }
+  }
+  .campo{ display:flex; flex-direction:column; gap:6px; }
+  .campo label{
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    color: var(--marfim-fraca);
+  }
+  input, select{
+    background: var(--vinho);
+    border: 1px solid var(--borda);
+    color: var(--marfim);
+    padding: 10px 12px;
+    border-radius: 8px;
+    font-family:'Work Sans', sans-serif;
+    font-size: 14px;
+    width: 100%;
+  }
+  input:focus, select:focus, button:focus-visible{
+    outline: 2px solid var(--dourado);
+    outline-offset: 1px;
+  }
+  input::placeholder{ color: var(--marfim-fraca); opacity: .6; }
+
+  button{
+    font-family:'Work Sans', sans-serif;
+    font-weight: 600;
+    font-size: 13px;
+    border-radius: 8px;
+    border: 1px solid transparent;
+    padding: 10px 16px;
+    cursor: pointer;
+    transition: transform .1s ease, opacity .15s ease;
+  }
+  button:active{ transform: scale(0.97); }
+  .btn-dourado{ background: var(--dourado); color: var(--vinho); }
+  .btn-dourado:hover{ opacity: .9; }
+  .btn-fantasma{ background: transparent; color: var(--marfim); border-color: var(--borda); }
+  .btn-fantasma:hover{ border-color: var(--dourado); color: var(--dourado); }
+  .btn-perigo{ background: transparent; color: var(--terracota); border-color: rgba(181,83,60,0.4); }
+  .btn-perigo:hover{ background: rgba(181,83,60,0.12); }
+  .btn-pequeno{ padding: 6px 10px; font-size: 12px; }
+
+  /* ITEM CARD */
+  .item-card{
+    background: var(--vinho-2);
+    border: 1px solid var(--borda);
+    border-radius: 12px;
+    margin-bottom: 16px;
+    overflow: hidden;
+  }
+  .item-cabecalho{
+    display:flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 18px;
+    cursor: pointer;
+    gap: 12px;
+  }
+  .item-info{ display:flex; flex-direction:column; gap:2px; }
+  .item-nome{ font-family:'Fraunces', serif; font-size: 18px; font-weight: 600; }
+  .item-meta{ font-size: 12px; color: var(--marfim-fraca); font-family:'IBM Plex Mono', monospace; }
+  .item-preco-resumo{ text-align:right; display:flex; flex-direction:column; gap: 2px; }
+  .item-preco-resumo .preco{
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 18px;
+    color: var(--oliva);
+    font-weight: 600;
+  }
+  .item-preco-resumo .mercado{ font-size: 12px; color: var(--marfim-fraca); }
+  .sem-cotacao{ font-size: 12px; color: var(--marfim-fraca); font-style: italic; }
+
+  .item-corpo{
+    border-top: 1px solid var(--borda);
+    padding: 16px 18px 18px;
+    display: none;
+  }
+  .item-corpo.aberto{ display: block; }
+
+  table.cotacoes{
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    margin-bottom: 14px;
+  }
+  table.cotacoes th{
+    text-align: left;
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    color: var(--marfim-fraca);
+    padding: 8px 8px;
+    border-bottom: 1px solid var(--borda);
+  }
+  table.cotacoes td{
+    padding: 10px 8px;
+    border-bottom: 1px solid var(--borda);
+    vertical-align: middle;
+  }
+  table.cotacoes tr:last-child td{ border-bottom: none; }
+  .preco-mono{ font-family:'IBM Plex Mono', monospace; }
+  .linha-melhor{ background: rgba(138,154,107,0.1); }
+  .selo{
+    display:inline-flex;
+    align-items:center;
+    gap: 5px;
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    color: var(--vinho);
+    background: var(--oliva);
+    border-radius: 999px;
+    padding: 3px 9px;
+    white-space: nowrap;
+  }
+  .link-rota{
+    font-size: 12px;
+    color: var(--dourado);
+    text-decoration: none;
+    border-bottom: 1px dashed var(--dourado-fraco);
+  }
+  .link-rota:hover{ color: var(--marfim); border-color: var(--marfim); }
+
+  form.nova-cotacao{
+    display: grid;
+    grid-template-columns: 1.2fr 0.8fr 1.5fr auto;
+    gap: 8px;
+  }
+  @media (max-width: 720px){
+    form.nova-cotacao{ grid-template-columns: 1fr 1fr; }
+  }
+
+  /* SUMMARY TABLE */
+  table.resumo{
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    background: var(--vinho-2);
+    border: 1px solid var(--borda);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  table.resumo th{
+    text-align:left;
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    color: var(--marfim-fraca);
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--borda);
+  }
+  table.resumo td{
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--borda);
+  }
+  table.resumo tr:last-child td{ border-bottom: none; }
+  table.resumo tfoot td{
+    font-family:'Fraunces', serif;
+    font-size: 16px;
+    color: var(--dourado);
+    border-bottom: none;
+    padding-top: 16px;
+  }
+
+  .vazio{
+    text-align:center;
+    padding: 40px 20px;
+    color: var(--marfim-fraca);
+    border: 1px dashed var(--borda);
+    border-radius: 12px;
+    font-size: 14px;
+  }
+
+  .rodape-acoes{
+    display:flex;
+    gap: 10px;
+    margin-top: 40px;
+    padding-top: 20px;
+    border-top: 1px solid var(--borda);
+    flex-wrap: wrap;
+  }
+  .aviso{
+    font-size: 12px;
+    color: var(--marfim-fraca);
+    margin-top: 10px;
+  }
+  input[type="file"]{ display:none; }
+
+  ::-webkit-scrollbar{ width: 10px; }
+  ::-webkit-scrollbar-thumb{ background: var(--vinho-3); border-radius: 8px; }
+
+  @media (prefers-reduced-motion: reduce){
+    *{ transition: none !important; scroll-behavior: auto !important; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="hero">
+    <div class="eyebrow">Planejamento · Cerimônia</div>
+    <h1>Orçamento de Comidas do Casamento</h1>
+    <p class="subtitulo">Cadastre cada item, cotado em mercados diferentes, e veja na hora onde sai mais barato — com a rota até o mercado.</p>
+
+    <div class="totais">
+      <div class="total-card">
+        <div class="label">Total pelo melhor preço</div>
+        <div class="valor" id="totalGeral">R$ 0,00</div>
+      </div>
+      <div class="total-card">
+        <div class="label">Itens cadastrados</div>
+        <div class="valor" id="totalItens">0</div>
+      </div>
+      <div class="total-card">
+        <div class="label">Mercados cotados</div>
+        <div class="valor" id="totalMercados">0</div>
+      </div>
+    </div>
+  </header>
+
+  <section>
+    <div class="titulo-secao">Novo item</div>
+    <form class="novo-item" id="formNovoItem">
+      <div class="campo">
+        <label for="itemNome">Item</label>
+        <input type="text" id="itemNome" placeholder="Ex: Picanha, Refrigerante 2L" required>
+      </div>
+      <div class="campo">
+        <label for="itemCategoria">Categoria</label>
+        <input type="text" id="itemCategoria" placeholder="Ex: Carnes, Bebidas">
+      </div>
+      <div class="campo">
+        <label for="itemQtd">Quantidade</label>
+        <input type="number" id="itemQtd" placeholder="1" min="0" step="0.01">
+      </div>
+      <div class="campo">
+        <label for="itemUnidade">Unidade</label>
+        <input type="text" id="itemUnidade" placeholder="kg, un, L, fardo">
+      </div>
+      <button type="submit" class="btn-dourado">Adicionar item</button>
+    </form>
+  </section>
+
+  <section>
+    <div class="titulo-secao">Itens e cotações</div>
+    <div id="listaItens"></div>
+    <div class="vazio" id="estadoVazio">Nenhum item cadastrado ainda. Adicione o primeiro item acima.</div>
+  </section>
+
+  <section>
+    <div class="titulo-secao">Resumo — melhor preço por item</div>
+    <table class="resumo" id="tabelaResumo">
+      <thead>
+        <tr>
+          <th>Item</th>
+          <th>Qtd.</th>
+          <th>Melhor preço</th>
+          <th>Mercado</th>
+          <th>Subtotal</th>
+        </tr>
+      </thead>
+      <tbody id="corpoResumo"></tbody>
+      <tfoot>
+        <tr><td colspan="4">Total</td><td id="totalResumo">R$ 0,00</td></tr>
+      </tfoot>
+    </table>
+  </section>
+
+  <div class="rodape-acoes">
+    <button class="btn-fantasma" id="btnExportar">Exportar backup (.json)</button>
+    <button class="btn-fantasma" id="btnImportarTrigger">Importar backup (.json)</button>
+    <input type="file" id="btnImportar" accept="application/json">
+    <button class="btn-perigo" id="btnLimparTudo">Apagar tudo</button>
+  </div>
+  <p class="aviso">Os dados ficam salvos no navegador deste dispositivo. Use "Exportar backup" de vez em quando para não perder nada.</p>
+
+</div>
+
+<script>
+(function(){
+  const CHAVE = 'orcamento-casamento-v1';
+  let itens = [];
+
+  function carregar(){
+    try{
+      const bruto = localStorage.getItem(CHAVE);
+      itens = bruto ? JSON.parse(bruto) : [];
+    }catch(e){
+      itens = [];
+    }
+  }
+  function salvar(){
+    try{
+      localStorage.setItem(CHAVE, JSON.stringify(itens));
+    }catch(e){
+      console.error('Não foi possível salvar localmente.', e);
+    }
+  }
+
+  function formatarMoeda(valor){
+    return (valor || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  }
+
+  function melhorCotacao(item){
+    if(!item.cotacoes || item.cotacoes.length === 0) return null;
+    return item.cotacoes.reduce((menor, atual) => atual.preco < menor.preco ? atual : menor, item.cotacoes[0]);
+  }
+
+  function linkRota(endereco){
+    return 'https://www.google.com/maps/dir/?api=1&destination=' + encodeURIComponent(endereco);
+  }
+
+  function uid(){
+    return Math.random().toString(36).slice(2, 10);
+  }
+
+  // ---------- RENDER ----------
+  function render(){
+    const lista = document.getElementById('listaItens');
+    const vazio = document.getElementById('estadoVazio');
+    lista.innerHTML = '';
+
+    vazio.style.display = itens.length === 0 ? 'block' : 'none';
+
+    let totalGeral = 0;
+    let mercadosUnicos = new Set();
+    const corpoResumo = document.getElementById('corpoResumo');
+    corpoResumo.innerHTML = '';
+
+    itens.forEach(item => {
+      const melhor = melhorCotacao(item);
+      const qtd = item.qtd && item.qtd > 0 ? item.qtd : 1;
+      const subtotal = melhor ? melhor.preco * qtd : 0;
+      if(melhor) totalGeral += subtotal;
+      (item.cotacoes || []).forEach(c => mercadosUnicos.add(c.mercado.trim().toLowerCase()));
+
+      // card
+      const card = document.createElement('div');
+      card.className = 'item-card';
+
+      const cabecalho = document.createElement('div');
+      cabecalho.className = 'item-cabecalho';
+      cabecalho.innerHTML = `
+        <div class="item-info">
+          <div class="item-nome">${escapeHtml(item.nome)}</div>
+          <div class="item-meta">${escapeHtml(item.categoria || 'Sem categoria')} · ${qtd} ${escapeHtml(item.unidade || 'un')}</div>
+        </div>
+        ${melhor ? `
+          <div class="item-preco-resumo">
+            <div class="preco">${formatarMoeda(subtotal)}</div>
+            <div class="mercado">${escapeHtml(melhor.mercado)}</div>
+          </div>
+        ` : `<div class="sem-cotacao">Sem cotação</div>`}
+      `;
+      cabecalho.addEventListener('click', () => {
+        corpo.classList.toggle('aberto');
+      });
+
+      const corpo = document.createElement('div');
+      corpo.className = 'item-corpo';
+
+      corpo.appendChild(criarTabelaCotacoes(item, melhor));
+      corpo.appendChild(criarFormCotacao(item));
+
+      const acoesItem = document.createElement('div');
+      acoesItem.style.marginTop = '12px';
+      acoesItem.innerHTML = `<button class="btn-perigo btn-pequeno" data-remover-item="${item.id}">Remover item</button>`;
+      corpo.appendChild(acoesItem);
+
+      card.appendChild(cabecalho);
+      card.appendChild(corpo);
+      lista.appendChild(card);
+
+      // linha resumo
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${escapeHtml(item.nome)}</td>
+        <td class="preco-mono">${qtd} ${escapeHtml(item.unidade || 'un')}</td>
+        <td class="preco-mono">${melhor ? formatarMoeda(melhor.preco) : '—'}</td>
+        <td>${melhor ? escapeHtml(melhor.mercado) : '—'}</td>
+        <td class="preco-mono">${melhor ? formatarMoeda(subtotal) : '—'}</td>
+      `;
+      corpoResumo.appendChild(tr);
+    });
+
+    document.getElementById('totalGeral').textContent = formatarMoeda(totalGeral);
+    document.getElementById('totalResumo').textContent = formatarMoeda(totalGeral);
+    document.getElementById('totalItens').textContent = itens.length;
+    document.getElementById('totalMercados').textContent = mercadosUnicos.size;
+
+    // listeners de remoção de item
+    lista.querySelectorAll('[data-remover-item]').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const id = btn.getAttribute('data-remover-item');
+        itens = itens.filter(i => i.id !== id);
+        salvar();
+        render();
+      });
+    });
+  }
+
+  function criarTabelaCotacoes(item, melhor){
+    const wrap = document.createElement('div');
+    if(!item.cotacoes || item.cotacoes.length === 0){
+      wrap.innerHTML = `<p class="aviso" style="margin:0 0 12px;">Nenhuma cotação ainda para este item.</p>`;
+      return wrap;
+    }
+    const tabela = document.createElement('table');
+    tabela.className = 'cotacoes';
+    tabela.innerHTML = `
+      <thead>
+        <tr>
+          <th>Mercado</th>
+          <th>Preço</th>
+          <th>Endereço</th>
+          <th></th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    `;
+    const tbody = tabela.querySelector('tbody');
+    item.cotacoes
+      .slice()
+      .sort((a,b) => a.preco - b.preco)
+      .forEach(c => {
+        const ehMelhor = melhor && c.id === melhor.id;
+        const tr = document.createElement('tr');
+        if(ehMelhor) tr.className = 'linha-melhor';
+        tr.innerHTML = `
+          <td>${escapeHtml(c.mercado)}</td>
+          <td class="preco-mono">${formatarMoeda(c.preco)} ${ehMelhor ? '<span class="selo">Melhor preço</span>' : ''}</td>
+          <td>${c.endereco ? `<a class="link-rota" href="${linkRota(c.endereco)}" target="_blank" rel="noopener">Ver rota →</a>` : '<span class="aviso">Sem endereço</span>'}</td>
+          <td></td>
+          <td><button class="btn-fantasma btn-pequeno" data-remover-cotacao="${item.id}|${c.id}">Remover</button></td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+    setTimeout(() => {
+      tabela.querySelectorAll('[data-remover-cotacao]').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const [itemId, cotId] = btn.getAttribute('data-remover-cotacao').split('|');
+          const alvo = itens.find(i => i.id === itemId);
+          if(alvo){
+            alvo.cotacoes = alvo.cotacoes.filter(c => c.id !== cotId);
+            salvar();
+            render();
+          }
+        });
+      });
+    });
+
+    wrap.appendChild(tabela);
+    return wrap;
+  }
+
+  function criarFormCotacao(item){
+    const form = document.createElement('form');
+    form.className = 'nova-cotacao';
+    form.innerHTML = `
+      <input type="text" placeholder="Mercado (ex: Assaí)" required data-campo="mercado">
+      <input type="number" step="0.01" min="0" placeholder="Preço (R$)" required data-campo="preco">
+      <input type="text" placeholder="Endereço do mercado" data-campo="endereco">
+      <button type="submit" class="btn-dourado btn-pequeno">Adicionar cotação</button>
+    `;
+    form.addEventListener('click', e => e.stopPropagation());
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const mercado = form.querySelector('[data-campo="mercado"]').value.trim();
+      const preco = parseFloat(form.querySelector('[data-campo="preco"]').value);
+      const endereco = form.querySelector('[data-campo="endereco"]').value.trim();
+      if(!mercado || isNaN(preco)) return;
+      item.cotacoes = item.cotacoes || [];
+      item.cotacoes.push({ id: uid(), mercado, preco, endereco });
+      salvar();
+      render();
+      // reabrir o card depois do redraw
+      setTimeout(() => {
+        const cabecalhos = document.querySelectorAll('.item-nome');
+        cabecalhos.forEach(el => {
+          if(el.textContent === item.nome){
+            el.closest('.item-card').querySelector('.item-corpo').classList.add('aberto');
+          }
+        });
+      });
+    });
+    return form;
+  }
+
+  function escapeHtml(str){
+    const div = document.createElement('div');
+    div.textContent = str == null ? '' : String(str);
+    return div.innerHTML;
+  }
+
+  // ---------- EVENTOS GERAIS ----------
+  document.getElementById('formNovoItem').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const nome = document.getElementById('itemNome').value.trim();
+    const categoria = document.getElementById('itemCategoria').value.trim();
+    const qtd = parseFloat(document.getElementById('itemQtd').value) || 1;
+    const unidade = document.getElementById('itemUnidade').value.trim();
+    if(!nome) return;
+    itens.push({ id: uid(), nome, categoria, qtd, unidade, cotacoes: [] });
+    salvar();
+    render();
+    e.target.reset();
+  });
+
+  document.getElementById('btnExportar').addEventListener('click', () => {
+    const blob = new Blob([JSON.stringify(itens, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'orcamento-casamento-backup.json';
+    a.click();
+    URL.revokeObjectURL(url);
+  });
+
+  document.getElementById('btnImportarTrigger').addEventListener('click', () => {
+    document.getElementById('btnImportar').click();
+  });
+
+  document.getElementById('btnImportar').addEventListener('change', (e) => {
+    const arquivo = e.target.files[0];
+    if(!arquivo) return;
+    const leitor = new FileReader();
+    leitor.onload = () => {
+      try{
+        const dados = JSON.parse(leitor.result);
+        if(Array.isArray(dados)){
+          itens = dados;
+          salvar();
+          render();
+        }
+      }catch(err){
+        alert('Arquivo inválido.');
+      }
+    };
+    leitor.readAsText(arquivo);
+    e.target.value = '';
+  });
+
+  document.getElementById('btnLimparTudo').addEventListener('click', () => {
+    if(confirm('Apagar todos os itens e cotações? Essa ação não pode ser desfeita.')){
+      itens = [];
+      salvar();
+      render();
+    }
+  });
+
+  carregar();
+  render();
+})();
+</script>
+</body>
+</html>
