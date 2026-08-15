@@ -108,9 +108,50 @@
     border-radius: 12px;
     padding: 18px;
     display: grid;
-    grid-template-columns: 2fr 1fr 1fr 1fr auto;
+    grid-template-columns: 1.6fr 1fr 1fr 0.8fr 0.8fr auto;
     gap: 10px;
     align-items: end;
+  }
+  form.novo-mercado{
+    background: var(--vinho-2);
+    border: 1px solid var(--borda);
+    border-radius: 12px;
+    padding: 18px;
+    display: grid;
+    grid-template-columns: 1fr 1.6fr auto;
+    gap: 10px;
+    align-items: end;
+  }
+  @media (max-width: 720px){
+    form.novo-mercado{ grid-template-columns: 1fr 1fr; }
+  }
+  .linha-mercado{
+    background: var(--vinho-2);
+    border: 1px solid var(--borda);
+    border-radius: 10px;
+    margin-bottom: 8px;
+    overflow: hidden;
+  }
+  .linha-mercado-view{
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 14px;
+    flex-wrap: wrap;
+  }
+  .linha-mercado-nome{ font-weight: 600; font-size: 14px; }
+  .linha-mercado-endereco{ font-size: 12px; color: var(--marfim-fraca); margin-top: 2px; }
+  .linha-mercado-acoes{ display: flex; gap: 8px; flex-shrink: 0; }
+  form.editar-mercado{
+    display: grid;
+    grid-template-columns: 1fr 1.6fr auto;
+    gap: 8px;
+    padding: 12px 14px;
+    align-items: center;
+  }
+  @media (max-width: 720px){
+    form.editar-mercado{ grid-template-columns: 1fr 1fr; }
   }
   @media (max-width: 720px){
     form.novo-item{ grid-template-columns: 1fr 1fr; }
@@ -176,6 +217,12 @@
   }
   .item-info{ display:flex; flex-direction:column; gap:2px; }
   .item-nome{ font-family:'Fraunces', serif; font-size: 18px; font-weight: 600; }
+  .item-marca{
+    font-family:'Work Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--marfim-fraca);
+  }
   .item-meta{ font-size: 12px; color: var(--marfim-fraca); font-family:'IBM Plex Mono', monospace; }
   .item-preco-resumo{ text-align:right; display:flex; flex-direction:column; gap: 2px; }
   .item-preco-resumo .preco{
@@ -242,18 +289,15 @@
 
   form.nova-cotacao{
     display: grid;
-    grid-template-columns: 1.1fr 0.7fr 0.6fr 0.7fr 1.2fr auto;
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
     gap: 8px;
-  }
-  @media (max-width: 720px){
-    form.nova-cotacao{ grid-template-columns: 1fr 1fr; }
   }
   form.editar-item{
     background: var(--vinho);
     border: 1px solid var(--dourado-fraco);
     border-radius: 10px;
     padding: 14px;
-    grid-template-columns: 1.6fr 1fr 0.8fr 0.8fr auto;
+    grid-template-columns: 1.4fr 0.9fr 0.9fr 0.7fr 0.7fr auto;
     gap: 10px;
     align-items: end;
     margin-bottom: 16px;
@@ -432,6 +476,24 @@
   </header>
 
   <section>
+    <div class="titulo-secao">Mercados cadastrados</div>
+    <p class="subtitulo" style="margin-bottom:14px;">Cadastre cada mercado uma única vez aqui. Depois, é só selecioná-lo ao registrar uma cotação — sem digitar nome e endereço de novo.</p>
+    <form class="novo-mercado" id="formNovoMercado">
+      <div class="campo">
+        <label for="mercadoNome">Nome do mercado</label>
+        <input type="text" id="mercadoNome" placeholder="Ex: Assaí" required>
+      </div>
+      <div class="campo">
+        <label for="mercadoEndereco">Endereço</label>
+        <input type="text" id="mercadoEndereco" placeholder="Ex: Av. Brasil, 100">
+      </div>
+      <button type="submit" class="btn-dourado">Salvar mercado</button>
+    </form>
+    <div id="listaMercados" style="margin-top:14px;"></div>
+    <div class="vazio" id="estadoVazioMercados" style="display:none;">Nenhum mercado cadastrado ainda. Cadastre acima para poder selecioná-lo nas cotações.</div>
+  </section>
+
+  <section>
     <div class="titulo-secao">Novo item</div>
     <form class="novo-item" id="formNovoItem">
       <div class="campo">
@@ -441,6 +503,10 @@
       <div class="campo">
         <label for="itemCategoria">Categoria</label>
         <input type="text" id="itemCategoria" placeholder="Ex: Carnes, Bebidas">
+      </div>
+      <div class="campo">
+        <label for="itemMarca">Marca</label>
+        <input type="text" id="itemMarca" placeholder="Ex: Friboi, Coca-Cola">
       </div>
       <div class="campo">
         <label for="itemQtd">Quantidade</label>
@@ -498,7 +564,7 @@
     </div>
 
     <div class="aba-conteudo" data-aba-conteudo="colar">
-      <p class="aviso" style="margin-top:0;">Cole aqui dados copiados do Excel, Google Sheets ou de qualquer tabela — com cabeçalho (<strong>Item · Categoria · Quantidade · Unidade · Mercado · Preço · Endereço</strong>, só "Item" é obrigatório). Também aceita uma lista simples de compras, uma linha por item, sem cabeçalho — ex: <em>"20 lts suco de laranja"</em>, <em>"3kg de cereja de mussarela"</em>, <em>"60 ovos"</em>. Nesse caso ele cria os itens com quantidade e unidade, e depois é só adicionar as cotações de mercado em cada um.</p>
+      <p class="aviso" style="margin-top:0;">Cole aqui dados copiados do Excel, Google Sheets ou de qualquer tabela — com cabeçalho (<strong>Item · Categoria · Marca · Quantidade · Unidade · Mercado · Preço · Endereço</strong>, só "Item" é obrigatório). Também aceita uma lista simples de compras, uma linha por item, sem cabeçalho — ex: <em>"20 lts suco de laranja"</em>, <em>"3kg de cereja de mussarela"</em>, <em>"60 ovos"</em>. Nesse caso ele cria os itens com quantidade e unidade, e depois é só adicionar as cotações de mercado em cada um.</p>
       <textarea id="areaColar" rows="7" placeholder="Item&#9;Categoria&#9;Quantidade&#9;Unidade&#9;Mercado&#9;Preço&#9;Endereço&#10;Picanha&#9;Carnes&#9;15&#9;kg&#9;Assaí&#9;42,90&#9;Av. Brasil, 100"></textarea>
       <button class="btn-dourado btn-pequeno" id="btnImportarColado" type="button">Importar dados colados</button>
     </div>
@@ -516,7 +582,9 @@
 <script>
 (function(){
   const CHAVE = 'orcamento-casamento-v1';
+  const CHAVE_MERCADOS = 'orcamento-casamento-mercados-v1';
   let itens = [];
+  let mercados = [];
 
   function carregar(){
     try{
@@ -531,6 +599,22 @@
       localStorage.setItem(CHAVE, JSON.stringify(itens));
     }catch(e){
       console.error('Não foi possível salvar localmente.', e);
+    }
+  }
+
+  function carregarMercados(){
+    try{
+      const bruto = localStorage.getItem(CHAVE_MERCADOS);
+      mercados = bruto ? JSON.parse(bruto) : [];
+    }catch(e){
+      mercados = [];
+    }
+  }
+  function salvarMercados(){
+    try{
+      localStorage.setItem(CHAVE_MERCADOS, JSON.stringify(mercados));
+    }catch(e){
+      console.error('Não foi possível salvar os mercados.', e);
     }
   }
 
@@ -614,6 +698,7 @@
   const ALIASES_CAMPOS = {
     item: ['item','nome','produto','descricao'],
     categoria: ['categoria','category'],
+    marca: ['marca','brand'],
     quantidade: ['quantidade','qtd','qty','quant'],
     unidade: ['unidade','un','unit'],
     mercado: ['mercado','loja','market','fornecedor','supermercado'],
@@ -726,6 +811,7 @@
           id: uid(),
           nome: String(reg.item).trim(),
           categoria: reg.categoria ? String(reg.categoria).trim() : '',
+          marca: reg.marca ? String(reg.marca).trim() : '',
           qtd: !isNaN(qtdParse) && qtdParse > 0 ? qtdParse : 1,
           unidade: reg.unidade ? String(reg.unidade).trim() : '',
           cotacoes: []
@@ -916,13 +1002,13 @@
       card.className = 'item-card';
       card.dataset.itemId = item.id;
       const mercadosItem = (item.cotacoes || []).map(c => c.mercado).join(' ');
-      card.dataset.busca = normalizar(`${item.nome} ${item.categoria || ''} ${mercadosItem}`);
+      card.dataset.busca = normalizar(`${item.nome} ${item.categoria || ''} ${item.marca || ''} ${mercadosItem}`);
 
       const cabecalho = document.createElement('div');
       cabecalho.className = 'item-cabecalho';
       cabecalho.innerHTML = `
         <div class="item-info">
-          <div class="item-nome">${escapeHtml(item.nome)}</div>
+          <div class="item-nome">${escapeHtml(item.nome)}${item.marca ? ` <span class="item-marca">${escapeHtml(item.marca)}</span>` : ''}</div>
           <div class="item-meta">${escapeHtml(item.categoria || 'Sem categoria')} · ${qtd} ${escapeHtml(item.unidade || 'un')}</div>
         </div>
         ${melhor ? `
@@ -1086,6 +1172,81 @@
     return wrap;
   }
 
+  // ---------- MERCADOS SALVOS ----------
+  function criarLinhaMercado(mercado){
+    const linha = document.createElement('div');
+    linha.className = 'linha-mercado';
+
+    const view = document.createElement('div');
+    view.className = 'linha-mercado-view';
+    view.innerHTML = `
+      <div class="linha-mercado-info">
+        <div class="linha-mercado-nome">${escapeHtml(mercado.nome)}</div>
+        <div class="linha-mercado-endereco">${mercado.endereco ? escapeHtml(mercado.endereco) : 'Sem endereço cadastrado'}</div>
+      </div>
+      <div class="linha-mercado-acoes">
+        <button type="button" class="btn-fantasma btn-pequeno" data-editar-mercado>Editar</button>
+        <button type="button" class="btn-perigo btn-pequeno" data-remover-mercado>Remover</button>
+      </div>
+    `;
+
+    const formEdit = document.createElement('form');
+    formEdit.className = 'editar-mercado';
+    formEdit.style.display = 'none';
+    formEdit.innerHTML = `
+      <input type="text" data-campo="nome" value="${escapeHtml(mercado.nome)}" required>
+      <input type="text" data-campo="endereco" value="${escapeHtml(mercado.endereco || '')}" placeholder="Endereço">
+      <div style="display:flex; gap:8px;">
+        <button type="submit" class="btn-dourado btn-pequeno">Salvar</button>
+        <button type="button" class="btn-fantasma btn-pequeno" data-cancelar>Cancelar</button>
+      </div>
+    `;
+
+    view.querySelector('[data-editar-mercado]').addEventListener('click', () => {
+      view.style.display = 'none';
+      formEdit.style.display = 'grid';
+    });
+    view.querySelector('[data-remover-mercado]').addEventListener('click', () => {
+      if(confirm(`Remover o mercado "${mercado.nome}"? As cotações já registradas com ele continuam salvas, só não aparecerá mais na lista para novas cotações.`)){
+        mercados = mercados.filter(m => m.id !== mercado.id);
+        salvarMercados();
+        renderMercados();
+        render();
+      }
+    });
+    formEdit.querySelector('[data-cancelar]').addEventListener('click', () => {
+      formEdit.style.display = 'none';
+      view.style.display = 'flex';
+    });
+    formEdit.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const nome = formEdit.querySelector('[data-campo="nome"]').value.trim();
+      const endereco = formEdit.querySelector('[data-campo="endereco"]').value.trim();
+      if(!nome) return;
+      mercado.nome = nome;
+      mercado.endereco = endereco;
+      salvarMercados();
+      renderMercados();
+      render();
+    });
+
+    linha.appendChild(view);
+    linha.appendChild(formEdit);
+    return linha;
+  }
+
+  function renderMercados(){
+    const container = document.getElementById('listaMercados');
+    const vazio = document.getElementById('estadoVazioMercados');
+    if(!container) return;
+    container.innerHTML = '';
+    if(vazio) vazio.style.display = mercados.length === 0 ? 'block' : 'none';
+    mercados
+      .slice()
+      .sort((a,b) => a.nome.localeCompare(b.nome, 'pt-BR'))
+      .forEach(m => container.appendChild(criarLinhaMercado(m)));
+  }
+
   function criarFormEditarItem(item){
     const form = document.createElement('form');
     form.className = 'editar-item';
@@ -1098,6 +1259,10 @@
       <div class="campo">
         <label>Categoria</label>
         <input type="text" data-campo="categoria" value="${escapeHtml(item.categoria || '')}">
+      </div>
+      <div class="campo">
+        <label>Marca</label>
+        <input type="text" data-campo="marca" value="${escapeHtml(item.marca || '')}">
       </div>
       <div class="campo">
         <label>Quantidade</label>
@@ -1120,11 +1285,13 @@
       e.preventDefault();
       const nome = form.querySelector('[data-campo="nome"]').value.trim();
       const categoria = form.querySelector('[data-campo="categoria"]').value.trim();
+      const marca = form.querySelector('[data-campo="marca"]').value.trim();
       const qtdValor = parseFloat(form.querySelector('[data-campo="qtd"]').value);
       const unidade = form.querySelector('[data-campo="unidade"]').value.trim();
       if(!nome) return;
       item.nome = nome;
       item.categoria = categoria;
+      item.marca = marca;
       item.qtd = (!isNaN(qtdValor) && qtdValor > 0) ? qtdValor : 1;
       item.unidade = unidade;
       salvar();
@@ -1137,38 +1304,85 @@
     return form;
   }
 
-  function criarFormCotacao(item){    const form = document.createElement('form');
+  function criarFormCotacao(item){
+    const form = document.createElement('form');
     form.className = 'nova-cotacao';
+    const opcoesMercado = mercados
+      .slice()
+      .sort((a,b) => a.nome.localeCompare(b.nome, 'pt-BR'))
+      .map(m => `<option value="${m.id}">${escapeHtml(m.nome)}</option>`)
+      .join('');
     form.innerHTML = `
-      <input type="text" placeholder="Mercado (ex: Assaí)" required data-campo="mercado">
+      <select required data-campo="mercadoSelect">
+        <option value="">Selecione o mercado…</option>
+        ${opcoesMercado}
+        <option value="__novo__">+ Novo mercado…</option>
+      </select>
+      <input type="text" placeholder="Nome do novo mercado" data-campo="novoMercadoNome" style="display:none;">
+      <input type="text" placeholder="Endereço do novo mercado" data-campo="novoMercadoEndereco" style="display:none;">
       <input type="number" step="0.01" min="0" placeholder="Preço (R$)" required data-campo="preco">
       <input type="number" step="0.01" min="0" placeholder="Qtd. cotada" value="1" data-campo="qtdCotacao" title="Quantidade que esse preço cobre (ex: 250)">
       <input type="text" placeholder="Un." value="${escapeHtml(item.unidade || '')}" data-campo="unidadeCotacao" title="Unidade da quantidade cotada (ex: g, kg, ml, L). Se for diferente da unidade da lista, o preço é convertido automaticamente.">
-      <input type="text" placeholder="Endereço do mercado" data-campo="endereco">
       <button type="submit" class="btn-dourado btn-pequeno">Adicionar cotação</button>
     `;
     form.addEventListener('click', e => e.stopPropagation());
+
+    const selectMercado = form.querySelector('[data-campo="mercadoSelect"]');
+    const inputNovoNome = form.querySelector('[data-campo="novoMercadoNome"]');
+    const inputNovoEndereco = form.querySelector('[data-campo="novoMercadoEndereco"]');
+
+    function alternarCamposNovoMercado(){
+      const ehNovo = selectMercado.value === '__novo__';
+      inputNovoNome.style.display = ehNovo ? 'block' : 'none';
+      inputNovoEndereco.style.display = ehNovo ? 'block' : 'none';
+    }
+    selectMercado.addEventListener('change', alternarCamposNovoMercado);
+    if(mercados.length === 0){
+      selectMercado.value = '__novo__';
+      alternarCamposNovoMercado();
+    }
+
     form.addEventListener('submit', (e) => {
       e.preventDefault();
-      const mercado = form.querySelector('[data-campo="mercado"]').value.trim();
+      const selecionado = selectMercado.value;
       const preco = parseFloat(form.querySelector('[data-campo="preco"]').value);
       const qtdCotacaoValor = parseFloat(form.querySelector('[data-campo="qtdCotacao"]').value);
       const qtdCotacao = (!isNaN(qtdCotacaoValor) && qtdCotacaoValor > 0) ? qtdCotacaoValor : 1;
       const unidadeCotacao = form.querySelector('[data-campo="unidadeCotacao"]').value.trim() || item.unidade || '';
-      const endereco = form.querySelector('[data-campo="endereco"]').value.trim();
-      if(!mercado || isNaN(preco)) return;
+      if(!selecionado || isNaN(preco)) return;
+
+      let mercadoObj;
+      if(selecionado === '__novo__'){
+        const nomeNovo = inputNovoNome.value.trim();
+        if(!nomeNovo) return;
+        const enderecoNovo = inputNovoEndereco.value.trim();
+        mercadoObj = mercados.find(m => normalizar(m.nome) === normalizar(nomeNovo));
+        if(mercadoObj){
+          if(enderecoNovo && !mercadoObj.endereco) mercadoObj.endereco = enderecoNovo;
+        } else {
+          mercadoObj = { id: uid(), nome: nomeNovo, endereco: enderecoNovo };
+          mercados.push(mercadoObj);
+        }
+        salvarMercados();
+        renderMercados();
+      } else {
+        mercadoObj = mercados.find(m => m.id === selecionado);
+        if(!mercadoObj) return;
+      }
+
       item.cotacoes = item.cotacoes || [];
-      item.cotacoes.push({ id: uid(), mercado, preco, qtdCotacao, unidadeCotacao, endereco });
+      item.cotacoes.push({
+        id: uid(),
+        mercado: mercadoObj.nome,
+        endereco: mercadoObj.endereco || '',
+        preco, qtdCotacao, unidadeCotacao
+      });
       salvar();
       render();
       // reabrir o card depois do redraw
       setTimeout(() => {
-        const cabecalhos = document.querySelectorAll('.item-nome');
-        cabecalhos.forEach(el => {
-          if(el.textContent === item.nome){
-            el.closest('.item-card').querySelector('.item-corpo').classList.add('aberto');
-          }
-        });
+        const card = document.querySelector(`[data-item-id="${item.id}"]`);
+        if(card) card.querySelector('.item-corpo').classList.add('aberto');
       });
     });
     return form;
@@ -1184,14 +1398,32 @@
   document.getElementById('campoBusca').addEventListener('input', aplicarFiltro);
 
   // ---------- EVENTOS GERAIS ----------
+  document.getElementById('formNovoMercado').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const nome = document.getElementById('mercadoNome').value.trim();
+    const endereco = document.getElementById('mercadoEndereco').value.trim();
+    if(!nome) return;
+    const existente = mercados.find(m => normalizar(m.nome) === normalizar(nome));
+    if(existente){
+      if(endereco) existente.endereco = endereco;
+    } else {
+      mercados.push({ id: uid(), nome, endereco });
+    }
+    salvarMercados();
+    renderMercados();
+    render();
+    e.target.reset();
+  });
+
   document.getElementById('formNovoItem').addEventListener('submit', (e) => {
     e.preventDefault();
     const nome = document.getElementById('itemNome').value.trim();
     const categoria = document.getElementById('itemCategoria').value.trim();
+    const marca = document.getElementById('itemMarca').value.trim();
     const qtd = parseFloat(document.getElementById('itemQtd').value) || 1;
     const unidade = document.getElementById('itemUnidade').value.trim();
     if(!nome) return;
-    itens.push({ id: uid(), nome, categoria, qtd, unidade, cotacoes: [] });
+    itens.push({ id: uid(), nome, categoria, marca, qtd, unidade, cotacoes: [] });
     salvar();
     render();
     e.target.reset();
@@ -1288,6 +1520,8 @@
   });
 
   carregar();
+  carregarMercados();
+  renderMercados();
   render();
 })();
 </script>
