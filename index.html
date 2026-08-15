@@ -7,6 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Work+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
   :root{
     --vinho: #2B1220;
@@ -290,6 +291,42 @@
     font-size: 14px;
   }
 
+  .campo-busca{
+    position: relative;
+    margin-bottom: 16px;
+  }
+  .campo-busca input{
+    padding-left: 38px;
+    background: var(--vinho-2);
+  }
+  .campo-busca::before{
+    content:"";
+    position:absolute;
+    left: 13px; top: 50%;
+    width: 14px; height: 14px;
+    transform: translateY(-50%);
+    border: 2px solid var(--marfim-fraca);
+    border-radius: 50%;
+    pointer-events: none;
+  }
+  .campo-busca::after{
+    content:"";
+    position:absolute;
+    left: 27px; top: 63%;
+    width: 7px; height: 2px;
+    background: var(--marfim-fraca);
+    transform: rotate(45deg);
+    pointer-events: none;
+  }
+  .busca-contagem{
+    display:block;
+    margin-top: 6px;
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--marfim-fraca);
+  }
+  .item-card.oculto{ display: none; }
+
   .rodape-acoes{
     display:flex;
     gap: 10px;
@@ -304,6 +341,38 @@
     margin-top: 10px;
   }
   input[type="file"]{ display:none; }
+
+  textarea{
+    width:100%;
+    background: var(--vinho);
+    border: 1px solid var(--borda);
+    color: var(--marfim);
+    padding: 10px 12px;
+    border-radius: 8px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px;
+    resize: vertical;
+    margin-bottom: 10px;
+  }
+  .painel-importar{
+    margin-top: 16px;
+    background: var(--vinho-2);
+    border: 1px solid var(--borda);
+    border-radius: 12px;
+    padding: 18px;
+  }
+  .import-abas{ display:flex; gap:6px; margin-bottom:14px; }
+  .aba-btn{
+    background: transparent;
+    border: 1px solid var(--borda);
+    color: var(--marfim-fraca);
+    padding: 8px 14px;
+    border-radius: 999px;
+    font-size: 12px;
+    cursor:pointer;
+  }
+  .aba-btn.ativo{ background: var(--dourado); color: var(--vinho); border-color: var(--dourado); font-weight:600; }
+  .aba-conteudo input[type="file"]{ display:block; color: var(--marfim-fraca); font-size: 13px; }
 
   ::-webkit-scrollbar{ width: 10px; }
   ::-webkit-scrollbar-thumb{ background: var(--vinho-3); border-radius: 8px; }
@@ -362,8 +431,13 @@
 
   <section>
     <div class="titulo-secao">Itens e cotações</div>
+    <div class="campo-busca">
+      <input type="text" id="campoBusca" placeholder="Buscar item, categoria ou mercado…">
+      <span class="busca-contagem" id="buscaContagem"></span>
+    </div>
     <div id="listaItens"></div>
     <div class="vazio" id="estadoVazio">Nenhum item cadastrado ainda. Adicione o primeiro item acima.</div>
+    <div class="vazio" id="estadoSemResultado" style="display:none;">Nenhum item encontrado para essa busca.</div>
   </section>
 
   <section>
@@ -387,11 +461,30 @@
 
   <div class="rodape-acoes">
     <button class="btn-fantasma" id="btnExportar">Exportar backup (.json)</button>
-    <button class="btn-fantasma" id="btnImportarTrigger">Importar backup (.json)</button>
-    <input type="file" id="btnImportar" accept="application/json">
+    <button class="btn-dourado" id="btnAbrirImportar">Importar itens</button>
     <button class="btn-perigo" id="btnLimparTudo">Apagar tudo</button>
   </div>
   <p class="aviso">Os dados ficam salvos no navegador deste dispositivo. Use "Exportar backup" de vez em quando para não perder nada.</p>
+
+  <div class="painel-importar" id="painelImportar" style="display:none;">
+    <div class="import-abas">
+      <button class="aba-btn ativo" data-aba="colar" type="button">Colar dados</button>
+      <button class="aba-btn" data-aba="arquivo" type="button">Enviar arquivo</button>
+    </div>
+
+    <div class="aba-conteudo" data-aba-conteudo="colar">
+      <p class="aviso" style="margin-top:0;">Cole aqui dados copiados do Excel, Google Sheets ou de qualquer tabela — com cabeçalho (<strong>Item · Categoria · Quantidade · Unidade · Mercado · Preço · Endereço</strong>, só "Item" é obrigatório). Também aceita uma lista simples de compras, uma linha por item, sem cabeçalho — ex: <em>"20 lts suco de laranja"</em>, <em>"3kg de cereja de mussarela"</em>, <em>"60 ovos"</em>. Nesse caso ele cria os itens com quantidade e unidade, e depois é só adicionar as cotações de mercado em cada um.</p>
+      <textarea id="areaColar" rows="7" placeholder="Item&#9;Categoria&#9;Quantidade&#9;Unidade&#9;Mercado&#9;Preço&#9;Endereço&#10;Picanha&#9;Carnes&#9;15&#9;kg&#9;Assaí&#9;42,90&#9;Av. Brasil, 100"></textarea>
+      <button class="btn-dourado btn-pequeno" id="btnImportarColado" type="button">Importar dados colados</button>
+    </div>
+
+    <div class="aba-conteudo" data-aba-conteudo="arquivo" style="display:none;">
+      <p class="aviso" style="margin-top:0;">Aceita planilhas <strong>.xlsx</strong> e <strong>.xls</strong>, arquivos <strong>.csv</strong> e <strong>.json</strong> (tanto uma lista de linhas quanto um backup completo exportado daqui). Use as mesmas colunas do modo "Colar dados". Para PDF, imagem ou Word: abra o arquivo, copie a tabela e cole na aba "Colar dados".</p>
+      <input type="file" id="inputArquivoImportar" accept=".csv,.xlsx,.xls,.json">
+    </div>
+
+    <div id="resultadoImportar" class="aviso" style="margin-top:12px;"></div>
+  </div>
 
 </div>
 
@@ -433,6 +526,304 @@
     return Math.random().toString(36).slice(2, 10);
   }
 
+  function normalizar(str){
+    return String(str == null ? '' : str)
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase().trim();
+  }
+
+  function parsePreco(valor){
+    if(valor === undefined || valor === null || valor === '') return NaN;
+    let s = String(valor).trim().replace(/[^\d.,-]/g, '');
+    if(s.includes(',') && s.includes('.')){
+      s = s.replace(/\./g, '').replace(',', '.');
+    } else if(s.includes(',')){
+      s = s.replace(',', '.');
+    }
+    return parseFloat(s);
+  }
+
+  // ---------- IMPORTAÇÃO ----------
+  const ALIASES_CAMPOS = {
+    item: ['item','nome','produto','descricao'],
+    categoria: ['categoria','category'],
+    quantidade: ['quantidade','qtd','qty','quant'],
+    unidade: ['unidade','un','unit'],
+    mercado: ['mercado','loja','market','fornecedor','supermercado'],
+    preco: ['preco','valor','price'],
+    endereco: ['endereco','address','local','localizacao','localização']
+  };
+
+  const UNIDADES_CONHECIDAS = new Set([
+    'kg','kilo','kilos','quilo','quilos',
+    'g','gr','grama','gramas',
+    'l','lt','lts','litro','litros','ml',
+    'cx','caixa','caixas',
+    'pct','pacote','pacotes',
+    'un','unid','unidade','unidades',
+    'dz','duzia','duzias',
+    'maco','macos',
+    'bisnaga','bisnagas',
+    'garrafa','garrafas',
+    'sache','saches',
+    'folha','folhas',
+    'ramo','ramos',
+    'molho','molhos',
+    'cacho','cachos',
+    'saco','sacos',
+    'fardo','fardos',
+    'copo','copos',
+    'fatia','fatias',
+    'posta','postas',
+    'peca','pecas',
+    'barra','barras',
+    'rolo','rolos',
+    'lata','latas',
+    'pote','potes',
+    'vidro','vidros',
+    'frasco','frascos',
+    'envelope','envelopes',
+    'cabeca','cabecas',
+    'pena','penas'
+  ]);
+
+  function detectarDelimitador(texto){
+    const primeiraLinha = texto.split(/\r?\n/)[0] || '';
+    if(primeiraLinha.includes('\t')) return '\t';
+    if((primeiraLinha.match(/;/g) || []).length > (primeiraLinha.match(/,/g) || []).length) return ';';
+    return ',';
+  }
+
+  function parseLinhaCSV(linha, delim){
+    const resultado = [];
+    let atual = '';
+    let dentroAspas = false;
+    for(let i = 0; i < linha.length; i++){
+      const ch = linha[i];
+      if(ch === '"'){
+        if(dentroAspas && linha[i+1] === '"'){ atual += '"'; i++; }
+        else dentroAspas = !dentroAspas;
+      } else if(ch === delim && !dentroAspas){
+        resultado.push(atual); atual = '';
+      } else {
+        atual += ch;
+      }
+    }
+    resultado.push(atual);
+    return resultado.map(s => s.trim());
+  }
+
+  function parseTextoParaLinhas(texto){
+    const delim = detectarDelimitador(texto);
+    return texto.split(/\r?\n/)
+      .filter(l => l.trim() !== '')
+      .map(l => parseLinhaCSV(l, delim));
+  }
+
+  function mapearCabecalho(cabecalho){
+    const mapa = {};
+    cabecalho.forEach((col, idx) => {
+      const norm = normalizar(col);
+      for(const [campo, aliases] of Object.entries(ALIASES_CAMPOS)){
+        if(aliases.includes(norm) && mapa[campo] === undefined) mapa[campo] = idx;
+      }
+    });
+    return mapa;
+  }
+
+  function linhasParaRegistros(linhas){
+    if(linhas.length < 2) return [];
+    const mapa = mapearCabecalho(linhas[0]);
+    if(mapa.item === undefined) return null;
+    const registros = [];
+    for(let i = 1; i < linhas.length; i++){
+      const linha = linhas[i];
+      if(!linha || linha.every(v => String(v).trim() === '')) continue;
+      const reg = {};
+      for(const [campo, idx] of Object.entries(mapa)){
+        reg[campo] = linha[idx];
+      }
+      if(reg.item && String(reg.item).trim() !== '') registros.push(reg);
+    }
+    return registros;
+  }
+
+  function mesclarRegistros(registros){
+    let itensNovos = 0, cotacoesNovas = 0;
+    registros.forEach(reg => {
+      const nomeNorm = normalizar(reg.item);
+      let item = itens.find(i => normalizar(i.nome) === nomeNorm);
+      if(!item){
+        const qtdParse = parsePreco(reg.quantidade);
+        item = {
+          id: uid(),
+          nome: String(reg.item).trim(),
+          categoria: reg.categoria ? String(reg.categoria).trim() : '',
+          qtd: !isNaN(qtdParse) && qtdParse > 0 ? qtdParse : 1,
+          unidade: reg.unidade ? String(reg.unidade).trim() : '',
+          cotacoes: []
+        };
+        itens.push(item);
+        itensNovos++;
+      }
+      if(reg.mercado && String(reg.mercado).trim() !== '' && reg.preco !== undefined && String(reg.preco).trim() !== ''){
+        const precoNum = parsePreco(reg.preco);
+        if(!isNaN(precoNum)){
+          item.cotacoes.push({
+            id: uid(),
+            mercado: String(reg.mercado).trim(),
+            preco: precoNum,
+            endereco: reg.endereco ? String(reg.endereco).trim() : ''
+          });
+          cotacoesNovas++;
+        }
+      }
+    });
+    return { itensNovos, cotacoesNovas };
+  }
+
+  function mostrarResultadoImportar(msg, erro){
+    const el = document.getElementById('resultadoImportar');
+    if(!el) return;
+    el.textContent = msg;
+    el.style.color = erro ? 'var(--terracota)' : 'var(--oliva)';
+  }
+
+  // Reconhece linhas soltas do tipo "20 lts suco de laranja" / "3kg de cereja" / "60 ovos"
+  function parseLinhaLivre(linha){
+    const original = String(linha || '').trim();
+    if(!original) return null;
+
+    const match = original.match(/^(\d+(?:[.,]\d+)?)\s*(.*)$/);
+    let qtd = 1;
+    let resto = original;
+    if(match && match[2] !== undefined && match[2].trim() !== ''){
+      const qtdParse = parsePreco(match[1]);
+      qtd = !isNaN(qtdParse) && qtdParse > 0 ? qtdParse : 1;
+      resto = match[2].trim();
+    }
+
+    let unidade = '';
+    let nome = resto;
+    const palavraMatch = resto.match(/^([A-Za-zÀ-ÿ]+)\.?\s*(.*)$/);
+    if(palavraMatch){
+      const candidata = normalizar(palavraMatch[1]);
+      if(UNIDADES_CONHECIDAS.has(candidata)){
+        unidade = palavraMatch[1];
+        const restante = palavraMatch[2].trim().replace(/^de\s+/i, '').trim();
+        if(restante) nome = restante;
+      }
+    }
+
+    nome = nome.replace(/\s+/g, ' ').trim();
+    if(nome) nome = nome.charAt(0).toUpperCase() + nome.slice(1);
+    if(!nome) return null;
+    return { nome, qtd, unidade };
+  }
+
+  function processarListaLivre(texto){
+    const linhas = String(texto).split(/\r?\n/).map(l => l.trim()).filter(l => l !== '');
+    if(linhas.length === 0){
+      mostrarResultadoImportar('Não encontrei nenhuma linha para importar.', true);
+      return;
+    }
+    let itensNovos = 0, itensAtualizados = 0;
+    linhas.forEach(linha => {
+      const parsed = parseLinhaLivre(linha);
+      if(!parsed) return;
+      const nomeNorm = normalizar(parsed.nome);
+      let item = itens.find(i => normalizar(i.nome) === nomeNorm);
+      if(item){
+        item.qtd = (parseFloat(item.qtd) || 0) + parsed.qtd;
+        if(!item.unidade && parsed.unidade) item.unidade = parsed.unidade;
+        itensAtualizados++;
+      } else {
+        itens.push({
+          id: uid(),
+          nome: parsed.nome,
+          categoria: '',
+          qtd: parsed.qtd,
+          unidade: parsed.unidade,
+          cotacoes: []
+        });
+        itensNovos++;
+      }
+    });
+    salvar();
+    render();
+    mostrarResultadoImportar(
+      `Lista importada: ${itensNovos} item(ns) novo(s)${itensAtualizados ? `, ${itensAtualizados} somado(s) a itens existentes` : ''}. Agora adicione as cotações de mercado em cada item.`
+    );
+  }
+
+  // Decide se as linhas formam uma tabela (com cabeçalho reconhecível) ou uma lista simples de compras
+  function processarLinhasOuLivre(linhas){
+    const maxColunas = linhas.reduce((max, l) => Math.max(max, (l || []).filter(v => String(v).trim() !== '').length), 0);
+    if(maxColunas <= 1){
+      const textos = linhas.map(l => (l && l[0] !== undefined) ? String(l[0]) : '').filter(t => t.trim() !== '');
+      processarListaLivre(textos.join('\n'));
+      return;
+    }
+    processarLinhas(linhas);
+  }
+
+  function processarLinhas(linhas){
+    const filtradas = linhas.filter(l => l && l.some(v => String(v).trim() !== ''));
+    if(filtradas.length < 2){
+      mostrarResultadoImportar('Não encontrei linhas de dados além do cabeçalho.', true);
+      return;
+    }
+    const registros = linhasParaRegistros(filtradas);
+    if(registros === null){
+      mostrarResultadoImportar('Não reconheci as colunas. Use um cabeçalho com: Item, Categoria, Quantidade, Unidade, Mercado, Preço, Endereço.', true);
+      return;
+    }
+    if(registros.length === 0){
+      mostrarResultadoImportar('Nenhuma linha válida encontrada (a coluna "Item" precisa estar preenchida).', true);
+      return;
+    }
+    const { itensNovos, cotacoesNovas } = mesclarRegistros(registros);
+    salvar();
+    render();
+    mostrarResultadoImportar(`Importado: ${itensNovos} item(ns) novo(s), ${cotacoesNovas} cotação(ões) adicionada(s).`);
+  }
+
+  function processarTexto(texto){
+    if(!texto || !texto.trim()){
+      mostrarResultadoImportar('Cole algum conteúdo antes de importar.', true);
+      return;
+    }
+    processarLinhasOuLivre(parseTextoParaLinhas(texto));
+  }
+
+  function processarJSON(dados){
+    if(Array.isArray(dados) && dados.length && dados[0] && typeof dados[0] === 'object' && 'cotacoes' in dados[0]){
+      const substituir = confirm('Esse arquivo parece um backup completo. Clique OK para SUBSTITUIR todos os itens atuais por ele, ou Cancelar para ADICIONAR estes itens aos já existentes.');
+      if(substituir){
+        itens = dados;
+      } else {
+        dados.forEach(it => {
+          itens.push({
+            ...it,
+            id: uid(),
+            cotacoes: (it.cotacoes || []).map(c => ({ ...c, id: uid() }))
+          });
+        });
+      }
+      salvar();
+      render();
+      mostrarResultadoImportar(`Backup aplicado (${dados.length} item(ns)).`);
+      return;
+    }
+    if(Array.isArray(dados) && dados.length && typeof dados[0] === 'object'){
+      const cabecalho = Object.keys(dados[0]);
+      const linhas = [cabecalho, ...dados.map(obj => cabecalho.map(k => obj[k]))];
+      processarLinhas(linhas);
+      return;
+    }
+    mostrarResultadoImportar('Arquivo JSON vazio ou em formato não reconhecido.', true);
+  }
+
   // ---------- RENDER ----------
   function render(){
     const lista = document.getElementById('listaItens');
@@ -456,6 +847,8 @@
       // card
       const card = document.createElement('div');
       card.className = 'item-card';
+      const mercadosItem = (item.cotacoes || []).map(c => c.mercado).join(' ');
+      card.dataset.busca = normalizar(`${item.nome} ${item.categoria || ''} ${mercadosItem}`);
 
       const cabecalho = document.createElement('div');
       cabecalho.className = 'item-cabecalho';
@@ -507,6 +900,8 @@
     document.getElementById('totalItens').textContent = itens.length;
     document.getElementById('totalMercados').textContent = mercadosUnicos.size;
 
+    aplicarFiltro();
+
     // listeners de remoção de item
     lista.querySelectorAll('[data-remover-item]').forEach(btn => {
       btn.addEventListener('click', (e) => {
@@ -517,6 +912,26 @@
         render();
       });
     });
+  }
+
+  function aplicarFiltro(){
+    const campo = document.getElementById('campoBusca');
+    const termo = normalizar(campo ? campo.value : '');
+    const cards = document.querySelectorAll('#listaItens .item-card');
+    const contagem = document.getElementById('buscaContagem');
+    const semResultado = document.getElementById('estadoSemResultado');
+    const estadoVazio = document.getElementById('estadoVazio');
+
+    let visiveis = 0;
+    cards.forEach(card => {
+      const bate = !termo || (card.dataset.busca || '').includes(termo);
+      card.classList.toggle('oculto', !bate);
+      if(bate) visiveis++;
+    });
+
+    if(contagem) contagem.textContent = termo ? `${visiveis} de ${cards.length} item(ns)` : '';
+    if(semResultado) semResultado.style.display = (termo && itens.length > 0 && visiveis === 0) ? 'block' : 'none';
+    if(estadoVazio && termo) estadoVazio.style.display = 'none';
   }
 
   function criarTabelaCotacoes(item, melhor){
@@ -576,8 +991,7 @@
     return wrap;
   }
 
-  function criarFormCotacao(item){
-    const form = document.createElement('form');
+  function criarFormCotacao(item){    const form = document.createElement('form');
     form.className = 'nova-cotacao';
     form.innerHTML = `
       <input type="text" placeholder="Mercado (ex: Assaí)" required data-campo="mercado">
@@ -615,6 +1029,9 @@
     return div.innerHTML;
   }
 
+  // ---------- BUSCA ----------
+  document.getElementById('campoBusca').addEventListener('input', aplicarFiltro);
+
   // ---------- EVENTOS GERAIS ----------
   document.getElementById('formNovoItem').addEventListener('submit', (e) => {
     e.preventDefault();
@@ -639,27 +1056,75 @@
     URL.revokeObjectURL(url);
   });
 
-  document.getElementById('btnImportarTrigger').addEventListener('click', () => {
-    document.getElementById('btnImportar').click();
+  // ---------- PAINEL DE IMPORTAÇÃO ----------
+  document.getElementById('btnAbrirImportar').addEventListener('click', () => {
+    const painel = document.getElementById('painelImportar');
+    painel.style.display = painel.style.display === 'none' ? 'block' : 'none';
   });
 
-  document.getElementById('btnImportar').addEventListener('change', (e) => {
+  document.querySelectorAll('.aba-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.aba-btn').forEach(b => b.classList.remove('ativo'));
+      btn.classList.add('ativo');
+      const aba = btn.getAttribute('data-aba');
+      document.querySelectorAll('[data-aba-conteudo]').forEach(el => {
+        el.style.display = el.getAttribute('data-aba-conteudo') === aba ? 'block' : 'none';
+      });
+      mostrarResultadoImportar('');
+    });
+  });
+
+  document.getElementById('btnImportarColado').addEventListener('click', () => {
+    const texto = document.getElementById('areaColar').value;
+    processarTexto(texto);
+  });
+
+  document.getElementById('inputArquivoImportar').addEventListener('change', (e) => {
     const arquivo = e.target.files[0];
     if(!arquivo) return;
-    const leitor = new FileReader();
-    leitor.onload = () => {
-      try{
-        const dados = JSON.parse(leitor.result);
-        if(Array.isArray(dados)){
-          itens = dados;
-          salvar();
-          render();
-        }
-      }catch(err){
-        alert('Arquivo inválido.');
+    const ext = arquivo.name.split('.').pop().toLowerCase();
+
+    if(ext === 'csv'){
+      const leitor = new FileReader();
+      leitor.onload = () => processarTexto(leitor.result);
+      leitor.onerror = () => mostrarResultadoImportar('Não foi possível ler o arquivo.', true);
+      leitor.readAsText(arquivo, 'UTF-8');
+
+    } else if(ext === 'xlsx' || ext === 'xls'){
+      if(typeof XLSX === 'undefined'){
+        mostrarResultadoImportar('A biblioteca de planilhas não carregou (sem conexão com a internet?). Tente novamente.', true);
+        return;
       }
-    };
-    leitor.readAsText(arquivo);
+      const leitor = new FileReader();
+      leitor.onload = (ev) => {
+        try{
+          const workbook = XLSX.read(new Uint8Array(ev.target.result), { type: 'array' });
+          const planilha = workbook.Sheets[workbook.SheetNames[0]];
+          const linhas = XLSX.utils.sheet_to_json(planilha, { header: 1, raw: false, defval: '' })
+            .map(l => l.map(v => String(v)));
+          processarLinhasOuLivre(linhas);
+        }catch(err){
+          mostrarResultadoImportar('Não foi possível ler essa planilha. Verifique o arquivo.', true);
+        }
+      };
+      leitor.onerror = () => mostrarResultadoImportar('Não foi possível ler o arquivo.', true);
+      leitor.readAsArrayBuffer(arquivo);
+
+    } else if(ext === 'json'){
+      const leitor = new FileReader();
+      leitor.onload = () => {
+        try{
+          processarJSON(JSON.parse(leitor.result));
+        }catch(err){
+          mostrarResultadoImportar('Esse arquivo JSON é inválido.', true);
+        }
+      };
+      leitor.onerror = () => mostrarResultadoImportar('Não foi possível ler o arquivo.', true);
+      leitor.readAsText(arquivo, 'UTF-8');
+
+    } else {
+      mostrarResultadoImportar('Formato não suportado. Use .csv, .xlsx, .xls ou .json.', true);
+    }
     e.target.value = '';
   });
 
