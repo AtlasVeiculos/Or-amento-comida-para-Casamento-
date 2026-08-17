@@ -108,7 +108,7 @@
     border-radius: 12px;
     padding: 18px;
     display: grid;
-    grid-template-columns: 1.6fr 1fr 1fr 0.8fr 0.8fr auto;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
     gap: 10px;
     align-items: end;
   }
@@ -153,9 +153,7 @@
   @media (max-width: 720px){
     form.editar-mercado{ grid-template-columns: 1fr 1fr; }
   }
-  @media (max-width: 720px){
-    form.novo-item{ grid-template-columns: 1fr 1fr; }
-  }
+
   .campo{ display:flex; flex-direction:column; gap:6px; }
   .campo label{
     font-family:'IBM Plex Mono', monospace;
@@ -297,13 +295,11 @@
     border: 1px solid var(--dourado-fraco);
     border-radius: 10px;
     padding: 14px;
-    grid-template-columns: 1.4fr 0.9fr 0.9fr 0.7fr 0.7fr auto;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
     gap: 10px;
     align-items: end;
     margin-bottom: 16px;
-  }
-  @media (max-width: 720px){
-    form.editar-item{ grid-template-columns: 1fr 1fr; }
   }
   .nota-cotacao{
     font-size: 11px;
@@ -360,6 +356,32 @@
     font-size: 14px;
   }
 
+  .controles-lista{
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    margin-bottom: 8px;
+  }
+  .controles-lista .campo-busca{
+    flex: 1 1 260px;
+    margin-bottom: 8px;
+  }
+  #filtroCategoria, #filtroSubcategoria{
+    background: var(--vinho-2);
+    border: 1px solid var(--borda);
+    border-radius: 10px;
+    padding: 0 14px;
+    height: 44px;
+    color: var(--marfim);
+    font-family: 'Work Sans', sans-serif;
+    font-size: 14px;
+    min-width: 190px;
+  }
+  #filtroSubcategoria:disabled{
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
   .campo-busca{
     position: relative;
     margin-bottom: 16px;
@@ -395,6 +417,65 @@
     color: var(--marfim-fraca);
   }
   .item-card.oculto{ display: none; }
+
+  .grupo-categoria{ margin-bottom: 26px; }
+  .grupo-categoria.oculto{ display: none; }
+  .grupo-categoria:last-child{ margin-bottom: 0; }
+  .titulo-grupo-categoria{
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    padding-bottom: 8px;
+    margin-bottom: 12px;
+    border-bottom: 1px solid var(--borda);
+    font-family: 'Fraunces', serif;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--dourado);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .contagem-grupo{
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    font-weight: 400;
+    text-transform: none;
+    letter-spacing: normal;
+    color: var(--marfim-fraca);
+    background: var(--vinho-2);
+    border: 1px solid var(--borda);
+    border-radius: 999px;
+    padding: 2px 10px;
+  }
+
+  .grupo-subcategoria{ margin: 0 0 18px 16px; }
+  .grupo-subcategoria.oculto{ display: none; }
+  .grupo-subcategoria:last-child{ margin-bottom: 0; }
+  .titulo-grupo-subcategoria{
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    padding-bottom: 6px;
+    margin-bottom: 10px;
+    border-bottom: 1px dashed var(--borda);
+    font-family: 'Work Sans', sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--marfim-fraca);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .titulo-grupo-subcategoria::before{
+    content: "↳";
+    margin-right: 6px;
+    color: var(--dourado-fraco);
+  }
+  .contagem-grupo-sub{
+    font-size: 10px;
+    padding: 1px 8px;
+  }
 
   .rodape-acoes{
     display:flex;
@@ -541,7 +622,11 @@
       </div>
       <div class="campo">
         <label for="itemCategoria">Categoria</label>
-        <input type="text" id="itemCategoria" placeholder="Ex: Carnes, Bebidas">
+        <input type="text" id="itemCategoria" placeholder="Ex: Carnes, Bebidas" list="sugestoesCategoria">
+      </div>
+      <div class="campo">
+        <label for="itemSubcategoria">Subcategoria</label>
+        <input type="text" id="itemSubcategoria" placeholder="Ex: Bovinos, Refrigerantes" list="sugestoesSubcategoria">
       </div>
       <div class="campo">
         <label for="itemMarca">Marca</label>
@@ -555,15 +640,25 @@
         <label for="itemUnidade">Unidade</label>
         <input type="text" id="itemUnidade" placeholder="kg, un, L, fardo">
       </div>
+      <datalist id="sugestoesCategoria"></datalist>
+      <datalist id="sugestoesSubcategoria"></datalist>
       <button type="submit" class="btn-dourado">Adicionar item</button>
     </form>
   </section>
 
   <section>
     <div class="titulo-secao">Itens e cotações</div>
-    <div class="campo-busca">
-      <input type="text" id="campoBusca" placeholder="Buscar item, categoria ou mercado…">
-      <span class="busca-contagem" id="buscaContagem"></span>
+    <div class="controles-lista">
+      <div class="campo-busca">
+        <input type="text" id="campoBusca" placeholder="Buscar item, categoria, marca ou mercado…">
+        <span class="busca-contagem" id="buscaContagem"></span>
+      </div>
+      <select id="filtroCategoria" title="Filtrar por categoria">
+        <option value="">Todas as categorias</option>
+      </select>
+      <select id="filtroSubcategoria" title="Filtrar por subcategoria" disabled>
+        <option value="">Todas as subcategorias</option>
+      </select>
     </div>
     <div id="listaItens"></div>
     <div class="vazio" id="estadoVazio">Nenhum item cadastrado ainda. Adicione o primeiro item acima.</div>
@@ -595,7 +690,7 @@
     <button class="btn-dourado" id="btnAbrirImportar">Importar itens</button>
     <button class="btn-perigo" id="btnLimparTudo">Apagar tudo</button>
   </div>
-  <p class="aviso">Os dados ficam salvos no navegador deste dispositivo. Use "Exportar backup" de vez em quando para não perder nada.</p>
+  <p class="aviso">Os dados são salvos automaticamente conforme você usa o app. Use "Exportar backup" de vez em quando para não perder nada.</p>
 
   <div class="painel-importar" id="painelImportar" style="display:none;">
     <div class="import-abas">
@@ -604,7 +699,7 @@
     </div>
 
     <div class="aba-conteudo" data-aba-conteudo="colar">
-      <p class="aviso" style="margin-top:0;">Cole aqui dados copiados do Excel, Google Sheets ou de qualquer tabela — com cabeçalho (<strong>Item · Categoria · Marca · Quantidade · Unidade · Mercado · Preço · Endereço</strong>, só "Item" é obrigatório). Também aceita uma lista simples de compras, uma linha por item, sem cabeçalho — ex: <em>"20 lts suco de laranja"</em>, <em>"3kg de cereja de mussarela"</em>, <em>"60 ovos"</em>. Nesse caso ele cria os itens com quantidade e unidade, e depois é só adicionar as cotações de mercado em cada um.</p>
+      <p class="aviso" style="margin-top:0;">Cole aqui dados copiados do Excel, Google Sheets ou de qualquer tabela — com cabeçalho (<strong>Item · Categoria · Subcategoria · Marca · Quantidade · Unidade · Mercado · Preço · Endereço</strong>, só "Item" é obrigatório). Também aceita uma lista simples de compras, uma linha por item, sem cabeçalho — ex: <em>"20 lts suco de laranja"</em>, <em>"3kg de cereja de mussarela"</em>, <em>"60 ovos"</em>. Nesse caso ele cria os itens com quantidade e unidade, e depois é só adicionar as cotações de mercado em cada um.</p>
       <textarea id="areaColar" rows="7" placeholder="Item&#9;Categoria&#9;Quantidade&#9;Unidade&#9;Mercado&#9;Preço&#9;Endereço&#10;Picanha&#9;Carnes&#9;15&#9;kg&#9;Assaí&#9;42,90&#9;Av. Brasil, 100"></textarea>
       <button class="btn-dourado btn-pequeno" id="btnImportarColado" type="button">Importar dados colados</button>
     </div>
@@ -619,112 +714,143 @@
 
 </div>
 
+<!-- Firebase (banco de dados na nuvem) — necessário para os dados ficarem
+     iguais em qualquer navegador, computador ou celular, em qualquer lugar.
+     Veja instruções de configuração logo no início do código JavaScript abaixo. -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+
 <script>
 (function(){
-  const CHAVE = 'itens';
-  const CHAVE_MERCADOS = 'mercados';
   const CHAVE_LOCAL_ITENS = 'orcamento-casamento-v1';
   const CHAVE_LOCAL_MERCADOS = 'orcamento-casamento-mercados-v1';
   let itens = [];
   let mercados = [];
+  let ignorarProximaAtualizacaoRemota = false;
 
-  // Usa armazenamento em nuvem (compartilhado entre qualquer dispositivo/pessoa que
-  // acesse esta mesma página) quando disponível. Se não estiver disponível (por exemplo,
-  // o arquivo aberto fora do Claude), cai para o armazenamento local do navegador.
-  const TEM_NUVEM = !!(window.storage && typeof window.storage.get === 'function' && typeof window.storage.set === 'function');
+  // ============================================================
+  // CONFIGURAÇÃO DO FIREBASE
+  // Cole aqui os valores que aparecem no Firebase Console em:
+  // Configurações do projeto → Seus apps → SDK setup and configuration.
+  // Enquanto os valores abaixo não forem preenchidos, o app funciona
+  // normalmente, mas salva só no navegador de cada aparelho (sem
+  // sincronizar entre dispositivos diferentes).
+  // ============================================================
+  const firebaseConfig = {
+    apiKey: "COLE_AQUI_SUA_API_KEY",
+    authDomain: "COLE_AQUI_SEU_PROJETO.firebaseapp.com",
+    projectId: "COLE_AQUI_SEU_PROJECT_ID",
+    storageBucket: "COLE_AQUI_SEU_PROJETO.appspot.com",
+    messagingSenderId: "COLE_AQUI_SEU_SENDER_ID",
+    appId: "COLE_AQUI_SEU_APP_ID"
+  };
+
+  const FIREBASE_CONFIGURADO = !!(firebaseConfig.apiKey && !String(firebaseConfig.apiKey).startsWith('COLE_AQUI'));
+  let docRef = null;
+
+  if(FIREBASE_CONFIGURADO && window.firebase){
+    try{
+      firebase.initializeApp(firebaseConfig);
+      const db = firebase.firestore();
+      docRef = db.collection('orcamento-casamento').doc('dados-compartilhados');
+    }catch(e){
+      console.error('Não foi possível iniciar o Firebase.', e);
+      docRef = null;
+    }
+  }
 
   function marcarStatusSincronizacao(status){
     const el = document.getElementById('statusSincronizacao');
     if(!el) return;
     if(status === 'ok'){
-      el.textContent = TEM_NUVEM ? '☁ Sincronizado — visível para quem acessar esta página' : '💾 Salvo apenas neste navegador';
+      el.textContent = docRef
+        ? '☁ Sincronizado — os mesmos dados em qualquer navegador ou aparelho'
+        : '💾 Salvando só neste navegador — sincronização entre aparelhos não configurada';
       el.classList.remove('status-erro');
     } else if(status === 'salvando'){
       el.textContent = '☁ Salvando…';
       el.classList.remove('status-erro');
     } else if(status === 'erro'){
-      el.textContent = '⚠ Não foi possível salvar agora. Tente novamente em instantes.';
+      el.textContent = '⚠ Não foi possível salvar agora. Verifique sua internet e tente de novo.';
       el.classList.add('status-erro');
     }
   }
 
-  async function carregar(){
-    if(TEM_NUVEM){
+  // Carrega os dados uma vez e, se o Firebase estiver configurado, passa a
+  // escutar mudanças em tempo real feitas por qualquer outro navegador/aparelho.
+  async function carregarTudo(){
+    if(docRef){
       try{
-        const r = await window.storage.get(CHAVE, true);
-        itens = (r && r.value) ? JSON.parse(r.value) : [];
+        const snap = await docRef.get();
+        if(snap.exists){
+          const dados = snap.data();
+          itens = dados.itens ? JSON.parse(dados.itens) : [];
+          mercados = dados.mercados ? JSON.parse(dados.mercados) : [];
+        }
       }catch(e){
-        itens = [];
+        console.error('Não foi possível carregar do Firebase.', e);
       }
-    } else {
-      try{
-        const bruto = localStorage.getItem(CHAVE_LOCAL_ITENS);
-        itens = bruto ? JSON.parse(bruto) : [];
-      }catch(e){
-        itens = [];
-      }
+      docRef.onSnapshot(snap => {
+        if(ignorarProximaAtualizacaoRemota){
+          ignorarProximaAtualizacaoRemota = false;
+          return;
+        }
+        if(!snap.exists) return;
+        const dados = snap.data();
+        itens = dados.itens ? JSON.parse(dados.itens) : [];
+        mercados = dados.mercados ? JSON.parse(dados.mercados) : [];
+        renderMercados();
+        render();
+      });
+      return;
     }
+    try{
+      const bruto = localStorage.getItem(CHAVE_LOCAL_ITENS);
+      itens = bruto ? JSON.parse(bruto) : [];
+    }catch(e){ itens = []; }
+    try{
+      const brutoMercados = localStorage.getItem(CHAVE_LOCAL_MERCADOS);
+      mercados = brutoMercados ? JSON.parse(brutoMercados) : [];
+    }catch(e){ mercados = []; }
   }
-  async function salvar(){
+
+  // Salva itens e mercados juntos, num único documento — usada tanto para
+  // mudanças em itens quanto em mercados.
+  async function persistirTudo(){
     marcarStatusSincronizacao('salvando');
-    if(TEM_NUVEM){
+    if(docRef){
       try{
-        const r = await window.storage.set(CHAVE, JSON.stringify(itens), true);
-        if(!r) throw new Error('falha ao salvar itens na nuvem');
+        ignorarProximaAtualizacaoRemota = true;
+        await docRef.set({
+          itens: JSON.stringify(itens),
+          mercados: JSON.stringify(mercados),
+          atualizadoEm: new Date().toISOString()
+        });
         marcarStatusSincronizacao('ok');
       }catch(e){
-        console.error('Não foi possível salvar na nuvem.', e);
+        console.error('Não foi possível salvar no Firebase.', e);
+        ignorarProximaAtualizacaoRemota = false;
         marcarStatusSincronizacao('erro');
       }
-    } else {
-      try{
-        localStorage.setItem(CHAVE_LOCAL_ITENS, JSON.stringify(itens));
-        marcarStatusSincronizacao('ok');
-      }catch(e){
-        console.error('Não foi possível salvar localmente.', e);
-        marcarStatusSincronizacao('erro');
-      }
+      return;
+    }
+    try{
+      localStorage.setItem(CHAVE_LOCAL_ITENS, JSON.stringify(itens));
+      localStorage.setItem(CHAVE_LOCAL_MERCADOS, JSON.stringify(mercados));
+      marcarStatusSincronizacao('ok');
+    }catch(e){
+      console.error('Não foi possível salvar localmente.', e);
+      marcarStatusSincronizacao('erro');
     }
   }
 
-  async function carregarMercados(){
-    if(TEM_NUVEM){
-      try{
-        const r = await window.storage.get(CHAVE_MERCADOS, true);
-        mercados = (r && r.value) ? JSON.parse(r.value) : [];
-      }catch(e){
-        mercados = [];
-      }
-    } else {
-      try{
-        const bruto = localStorage.getItem(CHAVE_LOCAL_MERCADOS);
-        mercados = bruto ? JSON.parse(bruto) : [];
-      }catch(e){
-        mercados = [];
-      }
-    }
-  }
-  async function salvarMercados(){
-    marcarStatusSincronizacao('salvando');
-    if(TEM_NUVEM){
-      try{
-        const r = await window.storage.set(CHAVE_MERCADOS, JSON.stringify(mercados), true);
-        if(!r) throw new Error('falha ao salvar mercados na nuvem');
-        marcarStatusSincronizacao('ok');
-      }catch(e){
-        console.error('Não foi possível salvar os mercados na nuvem.', e);
-        marcarStatusSincronizacao('erro');
-      }
-    } else {
-      try{
-        localStorage.setItem(CHAVE_LOCAL_MERCADOS, JSON.stringify(mercados));
-        marcarStatusSincronizacao('ok');
-      }catch(e){
-        console.error('Não foi possível salvar os mercados localmente.', e);
-        marcarStatusSincronizacao('erro');
-      }
-    }
-  }
+  // Mantidos por compatibilidade com o restante do código: tanto itens
+  // quanto mercados vivem no mesmo documento, então ambos os pares
+  // carregar/salvar apontam para as mesmas funções combinadas.
+  const carregar = carregarTudo;
+  const salvar = persistirTudo;
+  const carregarMercados = async () => {};
+  const salvarMercados = persistirTudo;
 
   function formatarMoeda(valor){
     return (valor || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -806,6 +932,7 @@
   const ALIASES_CAMPOS = {
     item: ['item','nome','produto','descricao'],
     categoria: ['categoria','category'],
+    subcategoria: ['subcategoria','sub-categoria','subcategory','sub categoria'],
     marca: ['marca','brand'],
     quantidade: ['quantidade','qtd','qty','quant'],
     unidade: ['unidade','un','unit'],
@@ -919,6 +1046,7 @@
           id: uid(),
           nome: String(reg.item).trim(),
           categoria: reg.categoria ? String(reg.categoria).trim() : '',
+          subcategoria: reg.subcategoria ? String(reg.subcategoria).trim() : '',
           marca: reg.marca ? String(reg.marca).trim() : '',
           qtd: !isNaN(qtdParse) && qtdParse > 0 ? qtdParse : 1,
           unidade: reg.unidade ? String(reg.unidade).trim() : '',
@@ -1085,6 +1213,22 @@
     mostrarResultadoImportar('Arquivo JSON vazio ou em formato não reconhecido.', true);
   }
 
+  // Agrupa os itens atuais por categoria e, dentro dela, por subcategoria.
+  // Itens sem categoria/subcategoria caem em "Sem categoria"/"Sem subcategoria", sempre por último.
+  function construirGrupos(){
+    const grupos = new Map(); // categoria -> Map(subcategoria -> itens[])
+    itens.forEach(item => {
+      const cat = (item.categoria || '').trim() || 'Sem categoria';
+      const sub = (item.subcategoria || '').trim() || 'Sem subcategoria';
+      if(!grupos.has(cat)) grupos.set(cat, new Map());
+      const subMap = grupos.get(cat);
+      if(!subMap.has(sub)) subMap.set(sub, []);
+      subMap.get(sub).push(item);
+    });
+    const categoriasOrdenadas = ordenarComPadraoNoFimGlobal(Array.from(grupos.keys()), 'Sem categoria');
+    return { grupos, categoriasOrdenadas };
+  }
+
   // ---------- RENDER ----------
   function render(){
     const lista = document.getElementById('listaItens');
@@ -1098,77 +1242,120 @@
     const corpoResumo = document.getElementById('corpoResumo');
     corpoResumo.innerHTML = '';
 
-    itens.forEach(item => {
-      const melhor = melhorCotacao(item);
-      const qtd = item.qtd && item.qtd > 0 ? item.qtd : 1;
-      const subtotal = melhor ? precoProjetado(item, melhor) : 0;
-      if(melhor) totalGeral += subtotal;
-      (item.cotacoes || []).forEach(c => mercadosUnicos.add(c.mercado.trim().toLowerCase()));
+    const { grupos, categoriasOrdenadas } = construirGrupos();
 
-      // card
-      const card = document.createElement('div');
-      card.className = 'item-card';
-      card.dataset.itemId = item.id;
-      const mercadosItem = (item.cotacoes || []).map(c => c.mercado).join(' ');
-      card.dataset.busca = normalizar(`${item.nome} ${item.categoria || ''} ${item.marca || ''} ${mercadosItem}`);
+    popularFiltros(grupos, categoriasOrdenadas);
 
-      const cabecalho = document.createElement('div');
-      cabecalho.className = 'item-cabecalho';
-      cabecalho.innerHTML = `
-        <div class="item-info">
-          <div class="item-nome">${escapeHtml(item.nome)}${item.marca ? ` <span class="item-marca">${escapeHtml(item.marca)}</span>` : ''}</div>
-          <div class="item-meta">${escapeHtml(item.categoria || 'Sem categoria')} · ${qtd} ${escapeHtml(item.unidade || 'un')}</div>
-        </div>
-        ${melhor ? `
-          <div class="item-preco-resumo">
-            <div class="preco">${formatarMoeda(subtotal)}</div>
-            <div class="mercado">${escapeHtml(melhor.mercado)}</div>
-          </div>
-        ` : `<div class="sem-cotacao">Sem cotação</div>`}
-      `;
-      cabecalho.addEventListener('click', () => {
-        corpo.classList.toggle('aberto');
-      });
+    categoriasOrdenadas.forEach(categoria => {
+      const subMap = grupos.get(categoria);
+      const subcategoriasOrdenadas = ordenarComPadraoNoFimGlobal(Array.from(subMap.keys()), 'Sem subcategoria');
+      const totalItensCategoria = Array.from(subMap.values()).reduce((soma, arr) => soma + arr.length, 0);
+      const mostrarSubcategorias = subcategoriasOrdenadas.length > 1 || subcategoriasOrdenadas[0] !== 'Sem subcategoria';
 
-      const corpo = document.createElement('div');
-      corpo.className = 'item-corpo';
+      const grupoEl = document.createElement('div');
+      grupoEl.className = 'grupo-categoria';
+      grupoEl.dataset.categoria = normalizar(categoria);
 
-      corpo.appendChild(criarFormEditarItem(item));
-      corpo.appendChild(criarTabelaCotacoes(item, melhor));
-      corpo.appendChild(criarFormCotacao(item));
+      const tituloGrupo = document.createElement('div');
+      tituloGrupo.className = 'titulo-grupo-categoria';
+      tituloGrupo.innerHTML = `<span>${escapeHtml(categoria)}</span><span class="contagem-grupo">${totalItensCategoria} ${totalItensCategoria === 1 ? 'item' : 'itens'}</span>`;
+      grupoEl.appendChild(tituloGrupo);
 
-      const acoesItem = document.createElement('div');
-      acoesItem.style.marginTop = '12px';
-      acoesItem.style.display = 'flex';
-      acoesItem.style.gap = '8px';
-      acoesItem.innerHTML = `
-        <button class="btn-fantasma btn-pequeno" data-editar-item="${item.id}">Editar item</button>
-        <button class="btn-perigo btn-pequeno" data-remover-item="${item.id}">Remover item</button>
-      `;
-      corpo.appendChild(acoesItem);
+      subcategoriasOrdenadas.forEach(subcategoria => {
+        let destino = grupoEl;
+        if(mostrarSubcategorias){
+          const subEl = document.createElement('div');
+          subEl.className = 'grupo-subcategoria';
+          subEl.dataset.subcategoria = normalizar(subcategoria);
+          const tituloSub = document.createElement('div');
+          tituloSub.className = 'titulo-grupo-subcategoria';
+          tituloSub.innerHTML = `<span>${escapeHtml(subcategoria)}</span><span class="contagem-grupo contagem-grupo-sub">${subMap.get(subcategoria).length}</span>`;
+          subEl.appendChild(tituloSub);
+          grupoEl.appendChild(subEl);
+          destino = subEl;
+        }
 
-      card.appendChild(cabecalho);
-      card.appendChild(corpo);
-      lista.appendChild(card);
+        subMap.get(subcategoria).forEach(item => {
+          const melhor = melhorCotacao(item);
+          const qtd = item.qtd && item.qtd > 0 ? item.qtd : 1;
+          const subtotal = melhor ? precoProjetado(item, melhor) : 0;
+          if(melhor) totalGeral += subtotal;
+          (item.cotacoes || []).forEach(c => mercadosUnicos.add(c.mercado.trim().toLowerCase()));
 
-      // linha resumo
-      const tr = document.createElement('tr');
-      tr.innerHTML = `
-        <td>${escapeHtml(item.nome)}</td>
-        <td class="preco-mono">${qtd} ${escapeHtml(item.unidade || 'un')}</td>
-        <td class="preco-mono">${melhor ? `${formatarMoeda(melhor.preco)}<span class="nota-cotacao">p/ ${escapeHtml(String((melhor.qtdCotacao && melhor.qtdCotacao > 0) ? melhor.qtdCotacao : 1))} ${escapeHtml(melhor.unidadeCotacao || item.unidade || 'un')}</span>` : '—'}</td>
-        <td>${melhor && melhor.marca ? escapeHtml(melhor.marca) : '—'}</td>
-        <td>${melhor ? escapeHtml(melhor.mercado) : '—'}</td>
-        <td class="preco-mono">${melhor ? formatarMoeda(subtotal) : '—'}</td>
-      `;
-      corpoResumo.appendChild(tr);
-    });
+          // card
+          const card = document.createElement('div');
+          card.className = 'item-card';
+          card.dataset.itemId = item.id;
+          card.dataset.categoria = normalizar(categoria);
+          card.dataset.subcategoria = normalizar(subcategoria);
+          const mercadosItem = (item.cotacoes || []).map(c => c.mercado).join(' ');
+          card.dataset.busca = normalizar(`${item.nome} ${item.categoria || ''} ${item.subcategoria || ''} ${item.marca || ''} ${mercadosItem}`);
+
+          const cabecalho = document.createElement('div');
+          cabecalho.className = 'item-cabecalho';
+          const rotuloCategoria = item.categoria
+            ? escapeHtml(item.categoria) + (item.subcategoria ? ` › ${escapeHtml(item.subcategoria)}` : '')
+            : 'Sem categoria';
+          cabecalho.innerHTML = `
+            <div class="item-info">
+              <div class="item-nome">${escapeHtml(item.nome)}${item.marca ? ` <span class="item-marca">${escapeHtml(item.marca)}</span>` : ''}</div>
+              <div class="item-meta">${rotuloCategoria} · ${qtd} ${escapeHtml(item.unidade || 'un')}</div>
+            </div>
+            ${melhor ? `
+              <div class="item-preco-resumo">
+                <div class="preco">${formatarMoeda(subtotal)}</div>
+                <div class="mercado">${escapeHtml(melhor.mercado)}</div>
+              </div>
+            ` : `<div class="sem-cotacao">Sem cotação</div>`}
+          `;
+          cabecalho.addEventListener('click', () => {
+            corpo.classList.toggle('aberto');
+          });
+
+          const corpo = document.createElement('div');
+          corpo.className = 'item-corpo';
+
+          corpo.appendChild(criarFormEditarItem(item));
+          corpo.appendChild(criarTabelaCotacoes(item, melhor));
+          corpo.appendChild(criarFormCotacao(item));
+
+          const acoesItem = document.createElement('div');
+          acoesItem.style.marginTop = '12px';
+          acoesItem.style.display = 'flex';
+          acoesItem.style.gap = '8px';
+          acoesItem.innerHTML = `
+            <button class="btn-fantasma btn-pequeno" data-editar-item="${item.id}">Editar item</button>
+            <button class="btn-perigo btn-pequeno" data-remover-item="${item.id}">Remover item</button>
+          `;
+          corpo.appendChild(acoesItem);
+
+          card.appendChild(cabecalho);
+          card.appendChild(corpo);
+          destino.appendChild(card);
+
+          // linha resumo
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td>${escapeHtml(item.nome)}</td>
+            <td class="preco-mono">${qtd} ${escapeHtml(item.unidade || 'un')}</td>
+            <td class="preco-mono">${melhor ? `${formatarMoeda(melhor.preco)}<span class="nota-cotacao">p/ ${escapeHtml(String((melhor.qtdCotacao && melhor.qtdCotacao > 0) ? melhor.qtdCotacao : 1))} ${escapeHtml(melhor.unidadeCotacao || item.unidade || 'un')}</span>` : '—'}</td>
+            <td>${melhor && melhor.marca ? escapeHtml(melhor.marca) : '—'}</td>
+            <td>${melhor ? escapeHtml(melhor.mercado) : '—'}</td>
+            <td class="preco-mono">${melhor ? formatarMoeda(subtotal) : '—'}</td>
+          `;
+          corpoResumo.appendChild(tr);
+        }); // fim itens da subcategoria
+      }); // fim subcategorias
+
+      lista.appendChild(grupoEl);
+    }); // fim categorias
 
     document.getElementById('totalGeral').textContent = formatarMoeda(totalGeral);
     document.getElementById('totalResumo').textContent = formatarMoeda(totalGeral);
     document.getElementById('totalItens').textContent = itens.length;
     document.getElementById('totalMercados').textContent = mercadosUnicos.size;
 
+    atualizarSugestoesCategoria();
     aplicarFiltro();
 
     // listeners de remoção de item
@@ -1200,9 +1387,90 @@
     });
   }
 
+  // Preenche os <datalist> de sugestão de categoria/subcategoria usados nos formulários
+  function atualizarSugestoesCategoria(){
+    const listaCategorias = document.getElementById('sugestoesCategoria');
+    const listaSubcategorias = document.getElementById('sugestoesSubcategoria');
+    if(listaCategorias){
+      const categorias = Array.from(new Set(itens.map(it => (it.categoria || '').trim()).filter(Boolean))).sort((a,b) => a.localeCompare(b, 'pt-BR'));
+      listaCategorias.innerHTML = categorias.map(c => `<option value="${escapeHtml(c)}"></option>`).join('');
+    }
+    if(listaSubcategorias){
+      const subcategorias = Array.from(new Set(itens.map(it => (it.subcategoria || '').trim()).filter(Boolean))).sort((a,b) => a.localeCompare(b, 'pt-BR'));
+      listaSubcategorias.innerHTML = subcategorias.map(s => `<option value="${escapeHtml(s)}"></option>`).join('');
+    }
+  }
+
+  // Popula os seletores de filtro por categoria/subcategoria, preservando a seleção atual quando possível
+  function popularFiltros(grupos, categoriasOrdenadas){
+    const selectCategoria = document.getElementById('filtroCategoria');
+    const selectSubcategoria = document.getElementById('filtroSubcategoria');
+    if(!selectCategoria || !selectSubcategoria) return;
+
+    const valorCategoriaAtual = selectCategoria.value;
+    selectCategoria.innerHTML = `<option value="">Todas as categorias</option>` +
+      categoriasOrdenadas.map(c => {
+        const total = Array.from(grupos.get(c).values()).reduce((s, arr) => s + arr.length, 0);
+        return `<option value="${normalizar(c)}">${escapeHtml(c)} (${total})</option>`;
+      }).join('');
+    if(categoriasOrdenadas.some(c => normalizar(c) === valorCategoriaAtual)) selectCategoria.value = valorCategoriaAtual;
+
+    atualizarFiltroSubcategoria(grupos, categoriasOrdenadas);
+  }
+
+  // Recalcula as opções do filtro de subcategoria com base na categoria atualmente selecionada
+  function atualizarFiltroSubcategoria(grupos, categoriasOrdenadas){
+    const selectCategoria = document.getElementById('filtroCategoria');
+    const selectSubcategoria = document.getElementById('filtroSubcategoria');
+    if(!selectCategoria || !selectSubcategoria) return;
+
+    const categoriaFiltroNorm = selectCategoria.value;
+    const valorSubcategoriaAtual = selectSubcategoria.value;
+
+    // reúne subMaps das categorias relevantes (a selecionada, ou todas se nenhuma estiver selecionada)
+    const categoriasRelevantes = categoriaFiltroNorm
+      ? categoriasOrdenadas.filter(c => normalizar(c) === categoriaFiltroNorm)
+      : categoriasOrdenadas;
+
+    const contagemSubcategoria = new Map();
+    categoriasRelevantes.forEach(cat => {
+      const subMap = grupos.get(cat);
+      if(!subMap) return;
+      subMap.forEach((itensDoSub, sub) => {
+        contagemSubcategoria.set(sub, (contagemSubcategoria.get(sub) || 0) + itensDoSub.length);
+      });
+    });
+
+    const subcategorias = ordenarComPadraoNoFimGlobal(Array.from(contagemSubcategoria.keys()), 'Sem subcategoria');
+
+    if(subcategorias.length <= 1 && subcategorias[0] === 'Sem subcategoria'){
+      selectSubcategoria.innerHTML = `<option value="">Todas as subcategorias</option>`;
+      selectSubcategoria.value = '';
+      selectSubcategoria.disabled = true;
+      return;
+    }
+
+    selectSubcategoria.disabled = false;
+    selectSubcategoria.innerHTML = `<option value="">Todas as subcategorias</option>` +
+      subcategorias.map(s => `<option value="${normalizar(s)}">${escapeHtml(s)} (${contagemSubcategoria.get(s)})</option>`).join('');
+    if(subcategorias.some(s => normalizar(s) === valorSubcategoriaAtual)) selectSubcategoria.value = valorSubcategoriaAtual;
+  }
+
+  function ordenarComPadraoNoFimGlobal(chaves, valorPadrao){
+    return chaves.sort((a, b) => {
+      if(a === valorPadrao) return 1;
+      if(b === valorPadrao) return -1;
+      return a.localeCompare(b, 'pt-BR');
+    });
+  }
+
   function aplicarFiltro(){
     const campo = document.getElementById('campoBusca');
     const termo = normalizar(campo ? campo.value : '');
+    const selectCategoria = document.getElementById('filtroCategoria');
+    const categoriaSelecionada = selectCategoria ? selectCategoria.value : '';
+    const selectSubcategoria = document.getElementById('filtroSubcategoria');
+    const subcategoriaSelecionada = selectSubcategoria ? selectSubcategoria.value : '';
     const cards = document.querySelectorAll('#listaItens .item-card');
     const contagem = document.getElementById('buscaContagem');
     const semResultado = document.getElementById('estadoSemResultado');
@@ -1210,14 +1478,25 @@
 
     let visiveis = 0;
     cards.forEach(card => {
-      const bate = !termo || (card.dataset.busca || '').includes(termo);
+      const bate = (!categoriaSelecionada || card.dataset.categoria === categoriaSelecionada)
+        && (!subcategoriaSelecionada || card.dataset.subcategoria === subcategoriaSelecionada)
+        && (!termo || (card.dataset.busca || '').includes(termo));
       card.classList.toggle('oculto', !bate);
       if(bate) visiveis++;
     });
 
-    if(contagem) contagem.textContent = termo ? `${visiveis} de ${cards.length} item(ns)` : '';
-    if(semResultado) semResultado.style.display = (termo && itens.length > 0 && visiveis === 0) ? 'block' : 'none';
-    if(estadoVazio && termo) estadoVazio.style.display = 'none';
+    // esconde subgrupos e grupos de categoria sem nenhum card visível dentro
+    document.querySelectorAll('#listaItens .grupo-subcategoria').forEach(sub => {
+      sub.classList.toggle('oculto', !sub.querySelector('.item-card:not(.oculto)'));
+    });
+    document.querySelectorAll('#listaItens .grupo-categoria').forEach(grupo => {
+      grupo.classList.toggle('oculto', !grupo.querySelector('.item-card:not(.oculto)'));
+    });
+
+    const filtroAtivo = !!(termo || categoriaSelecionada || subcategoriaSelecionada);
+    if(contagem) contagem.textContent = filtroAtivo ? `${visiveis} de ${cards.length} item(ns)` : '';
+    if(semResultado) semResultado.style.display = (filtroAtivo && itens.length > 0 && visiveis === 0) ? 'block' : 'none';
+    if(estadoVazio && filtroAtivo) estadoVazio.style.display = 'none';
   }
 
   function criarTabelaCotacoes(item, melhor){
@@ -1369,7 +1648,11 @@
       </div>
       <div class="campo">
         <label>Categoria</label>
-        <input type="text" data-campo="categoria" value="${escapeHtml(item.categoria || '')}">
+        <input type="text" data-campo="categoria" value="${escapeHtml(item.categoria || '')}" list="sugestoesCategoria">
+      </div>
+      <div class="campo">
+        <label>Subcategoria</label>
+        <input type="text" data-campo="subcategoria" value="${escapeHtml(item.subcategoria || '')}" list="sugestoesSubcategoria">
       </div>
       <div class="campo">
         <label>Marca</label>
@@ -1396,12 +1679,14 @@
       e.preventDefault();
       const nome = form.querySelector('[data-campo="nome"]').value.trim();
       const categoria = form.querySelector('[data-campo="categoria"]').value.trim();
+      const subcategoria = form.querySelector('[data-campo="subcategoria"]').value.trim();
       const marca = form.querySelector('[data-campo="marca"]').value.trim();
       const qtdValor = parseFloat(form.querySelector('[data-campo="qtd"]').value);
       const unidade = form.querySelector('[data-campo="unidade"]').value.trim();
       if(!nome) return;
       item.nome = nome;
       item.categoria = categoria;
+      item.subcategoria = subcategoria;
       item.marca = marca;
       item.qtd = (!isNaN(qtdValor) && qtdValor > 0) ? qtdValor : 1;
       item.unidade = unidade;
@@ -1526,6 +1811,13 @@
 
   // ---------- BUSCA ----------
   document.getElementById('campoBusca').addEventListener('input', aplicarFiltro);
+  document.getElementById('filtroCategoria').addEventListener('change', () => {
+    document.getElementById('filtroSubcategoria').value = '';
+    const { grupos, categoriasOrdenadas } = construirGrupos();
+    atualizarFiltroSubcategoria(grupos, categoriasOrdenadas);
+    aplicarFiltro();
+  });
+  document.getElementById('filtroSubcategoria').addEventListener('change', aplicarFiltro);
 
   // ---------- EVENTOS GERAIS ----------
   document.getElementById('formNovoMercado').addEventListener('submit', (e) => {
@@ -1549,11 +1841,12 @@
     e.preventDefault();
     const nome = document.getElementById('itemNome').value.trim();
     const categoria = document.getElementById('itemCategoria').value.trim();
+    const subcategoria = document.getElementById('itemSubcategoria').value.trim();
     const marca = document.getElementById('itemMarca').value.trim();
     const qtd = parseFloat(document.getElementById('itemQtd').value) || 1;
     const unidade = document.getElementById('itemUnidade').value.trim();
     if(!nome) return;
-    itens.push({ id: uid(), nome, categoria, marca, qtd, unidade, cotacoes: [] });
+    itens.push({ id: uid(), nome, categoria, subcategoria, marca, qtd, unidade, cotacoes: [] });
     salvar();
     render();
     e.target.reset();
