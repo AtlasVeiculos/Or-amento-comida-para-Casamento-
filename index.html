@@ -685,7 +685,7 @@ Marmitinha</pre>
     </div>
 
     <div class="aba-conteudo" data-aba-conteudo="cotacao-lote" style="display:none;">
-      <p class="aviso" style="margin-top:0;">Use isto quando os itens já estiverem cadastrados e você só precisa lançar os preços de um mercado de uma vez — sem recriar os itens. Escolha o mercado, cole uma linha por item no formato <strong>"Item: preço"</strong> (o nome precisa bater com um item já existente na sua lista), e clique em adicionar. Itens que não forem encontrados são avisados, não criados — nem a quantidade dos itens é alterada, só as cotações são adicionadas.</p>
+      <p class="aviso" style="margin-top:0;">Use isto quando os itens já estiverem cadastrados e você só precisa lançar os preços de um mercado de uma vez — sem recriar os itens. Escolha o mercado, cole uma linha por item no formato <strong>"Item: preço"</strong> (o nome precisa bater com um item já existente na sua lista), e clique em adicionar. Itens que não forem encontrados são avisados — e você pode criá-los com a cotação de um clique, ou corrigir o nome e tentar de novo.</p>
       <div class="campo" style="margin-bottom:10px;">
         <label for="loteMercadoSelect">Mercado dessas cotações</label>
         <select id="loteMercadoSelect">
@@ -697,6 +697,7 @@ Marmitinha</pre>
       <input type="text" id="loteNovoMercadoEndereco" placeholder="Endereço do novo mercado (opcional)" style="display:none; margin-bottom:10px;">
       <textarea id="areaLoteCotacao" rows="7" placeholder="Picanha: 42,90&#10;Detergente Limpol: 2,09&#10;Arroz: 24,90"></textarea>
       <button class="btn-dourado btn-pequeno" id="btnImportarLote" type="button">Adicionar cotações aos itens existentes</button>
+      <button class="btn-fantasma btn-pequeno" id="btnCriarNaoEncontradosLote" type="button" style="display:none; margin-left:8px;">Criar os itens não encontrados também</button>
     </div>
 
     <div id="resultadoImportar" class="aviso" style="margin-top:12px;"></div>
@@ -1372,7 +1373,13 @@ Marmitinha</pre>
   // texto: uma linha por item, no formato "Item: preço" (ou "Item - marca: preço").
   // mercadoNome: nome do mercado escolhido (ou digitado, se for novo).
   // enderecoNovoMercado: usado só quando o mercado ainda não existe.
+  let ultimosNaoEncontradosLote = []; // [{nome, cotacao}], preenchido após cada tentativa de cotação em lote
+
   function processarCotacaoLote(texto, mercadoNome, enderecoNovoMercado){
+    const btnCriar = document.getElementById('btnCriarNaoEncontradosLote');
+    if(btnCriar) btnCriar.style.display = 'none';
+    ultimosNaoEncontradosLote = [];
+
     const mercadoTrim = (mercadoNome || '').trim();
     if(!mercadoTrim){
       mostrarResultadoImportar('Escolha ou informe o mercado dessas cotações antes de importar.', true);
@@ -1404,7 +1411,7 @@ Marmitinha</pre>
       const nomeNorm = normalizar(parsed.nome);
       const item = itens.find(i => normalizar(i.nome) === nomeNorm);
       if(!item){
-        naoEncontrados.push(parsed.nome);
+        naoEncontrados.push(parsed);
         return;
       }
       item.cotacoes = item.cotacoes || [];
@@ -1427,17 +1434,70 @@ Marmitinha</pre>
 
     let msg = `${cotacoesNovas} cotação(ões) adicionada(s) em "${mercadoObj.nome}".`;
     if(naoEncontrados.length > 0){
-      const lista = naoEncontrados.slice(0, 8).join(', ') + (naoEncontrados.length > 8 ? '…' : '');
-      msg += ` ${naoEncontrados.length} item(ns) não encontrado(s) na sua lista (confira o nome, eles não foram criados): ${lista}.`;
+      const nomes = naoEncontrados.map(p => p.nome);
+      const lista = nomes.slice(0, 8).join(', ') + (nomes.length > 8 ? '…' : '');
+      msg += ` ${naoEncontrados.length} item(ns) não encontrado(s) na sua lista (confira o nome): ${lista}.`;
+      ultimosNaoEncontradosLote = naoEncontrados.map(p => ({ nome: p.nome, cotacao: p.cotacao, mercadoId: mercadoObj.id }));
+      if(btnCriar){
+        btnCriar.textContent = `Criar os ${naoEncontrados.length} itens não encontrados também`;
+        btnCriar.style.display = 'inline-block';
+      }
     }
     if(semPreco.length > 0){
       msg += ` ${semPreco.length} linha(s) ignorada(s) por não ter um preço reconhecido no formato "Item: preço".`;
     }
     mostrarResultadoImportar(msg, cotacoesNovas === 0);
 
-    if(cotacoesNovas > 0){
+    if(cotacoesNovas > 0 && naoEncontrados.length === 0){
       document.getElementById('areaLoteCotacao').value = '';
     }
+  }
+
+  // Cria de fato os itens que a última tentativa de cotação em lote não encontrou,
+  // já com a cotação (marca, quantidade cotada e preço) que tinha sido colada.
+  function criarNaoEncontradosLote(){
+    if(ultimosNaoEncontradosLote.length === 0) return;
+    const mercadoObj = mercados.find(m => m.id === ultimosNaoEncontradosLote[0].mercadoId);
+    if(!mercadoObj) return;
+
+    let itensNovos = 0, cotacoesNovas = 0, categoriasAutomaticas = 0;
+    ultimosNaoEncontradosLote.forEach(pendente => {
+      const categoriaSugerida = sugerirCategoriaAutomatica(pendente.nome);
+      if(categoriaSugerida) categoriasAutomaticas++;
+      const item = {
+        id: uid(),
+        nome: pendente.nome,
+        categoria: categoriaSugerida,
+        subcategoria: '',
+        marca: '',
+        qtd: 1,
+        unidade: pendente.cotacao.unidadeCotacao || '',
+        cotacoes: [{
+          id: uid(),
+          mercado: mercadoObj.nome,
+          endereco: mercadoObj.endereco || '',
+          marca: pendente.cotacao.marca || '',
+          preco: pendente.cotacao.preco,
+          qtdCotacao: pendente.cotacao.qtdCotacao,
+          unidadeCotacao: pendente.cotacao.unidadeCotacao || ''
+        }]
+      };
+      itens.push(item);
+      itensNovos++;
+      cotacoesNovas++;
+    });
+
+    ultimosNaoEncontradosLote = [];
+    const btnCriar = document.getElementById('btnCriarNaoEncontradosLote');
+    if(btnCriar) btnCriar.style.display = 'none';
+
+    salvar();
+    render();
+
+    let msg = `${itensNovos} item(ns) criado(s) com ${cotacoesNovas} cotação(ões) em "${mercadoObj.nome}".`;
+    if(categoriasAutomaticas > 0) msg += ` ${categoriasAutomaticas} categorizado(s) automaticamente — confira e ajuste se precisar.`;
+    mostrarResultadoImportar(msg);
+    document.getElementById('areaLoteCotacao').value = '';
   }
 
   // Decide se as linhas formam uma tabela (com cabeçalho reconhecível) ou uma lista simples de compras
@@ -2213,6 +2273,10 @@ Marmitinha</pre>
     }
     const texto = document.getElementById('areaLoteCotacao').value;
     processarCotacaoLote(texto, mercadoNome, enderecoNovo);
+  });
+
+  document.getElementById('btnCriarNaoEncontradosLote').addEventListener('click', () => {
+    criarNaoEncontradosLote();
   });
 
   document.getElementById('inputArquivoImportar').addEventListener('change', (e) => {
