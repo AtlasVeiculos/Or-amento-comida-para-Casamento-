@@ -490,6 +490,18 @@
     color: var(--marfim-fraca);
     margin-top: 10px;
   }
+  .exemplo-importacao{
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    color: var(--marfim);
+    background: var(--vinho-2);
+    border: 1px solid var(--borda);
+    border-radius: 8px;
+    padding: 10px 12px;
+    margin: 6px 0 10px;
+    white-space: pre-wrap;
+    line-height: 1.6;
+  }
   input[type="file"]{ display:none; }
 
   textarea{
@@ -699,7 +711,22 @@
     </div>
 
     <div class="aba-conteudo" data-aba-conteudo="colar">
-      <p class="aviso" style="margin-top:0;">Cole aqui dados copiados do Excel, Google Sheets ou de qualquer tabela — com cabeçalho (<strong>Item · Categoria · Subcategoria · Marca · Quantidade · Unidade · Mercado · Preço · Endereço</strong>, só "Item" é obrigatório). Também aceita uma lista simples de compras, uma linha por item, sem cabeçalho — ex: <em>"20 lts suco de laranja"</em>, <em>"3kg de cereja de mussarela"</em>, <em>"60 ovos"</em>. Nesse caso ele cria os itens com quantidade e unidade, e depois é só adicionar as cotações de mercado em cada um.</p>
+      <p class="aviso" style="margin-top:0;">Cole aqui dados copiados do Excel, Google Sheets ou de qualquer tabela — com cabeçalho (<strong>Item · Categoria · Subcategoria · Marca · Quantidade · Unidade · Mercado · Preço · Endereço</strong>, só "Item" é obrigatório).</p>
+      <p class="aviso">Também aceita uma lista simples, uma linha por item, sem cabeçalho — ex: <em>"20 lts suco de laranja"</em>, <em>"60 ovos"</em>. Categorias são reconhecidas automaticamente quando possível.</p>
+      <p class="aviso">Pra cotação de preços, use linhas de comando no meio da lista: escreva <em>"Supermercado Assaí"</em> (ou "Mercado: Assaí") antes dos itens daquele mercado, e a partir daí cada linha <em>"Item: preço"</em> vira uma cotação — ex: <em>"Picanha: 42,90"</em>. Pra voltar a só listar produtos sem preço, escreva <em>"produtos"</em> ou <em>"adicionar produtos"</em> numa linha. Também dá pra escrever <em>"cotação de preços"</em> ou <em>"adicionar cotação"</em> pra ligar o modo preço sem repetir o mercado. Exemplo:</p>
+      <pre class="exemplo-importacao">Supermercado Assaí
+Picanha: 42,90
+Detergente Limpol: 2,09
+
+produtos
+Guardanapo
+Marmitinha</pre>
+      <p class="aviso">Se preferir, ainda funciona o formato antigo com traço no fim da linha: <em>"12 detergentes - Limpol: 2,09"</em> ou <em>"6 buchinhas - Tinindo 4 unidades: 4,45"</em> (reconhece marca, quantidade cotada e preço). Nesse caso, ou se não usar as linhas de comando, preencha abaixo de qual mercado são os preços.</p>
+      <div class="campo" style="margin-bottom:10px;">
+        <label for="mercadoImportacaoLivre">Mercado padrão dessas cotações (opcional, só para a lista simples)</label>
+        <input type="text" id="mercadoImportacaoLivre" placeholder="Ex: Assaí" list="sugestoesMercadoImportacao">
+        <datalist id="sugestoesMercadoImportacao"></datalist>
+      </div>
       <textarea id="areaColar" rows="7" placeholder="Item&#9;Categoria&#9;Quantidade&#9;Unidade&#9;Mercado&#9;Preço&#9;Endereço&#10;Picanha&#9;Carnes&#9;15&#9;kg&#9;Assaí&#9;42,90&#9;Av. Brasil, 100"></textarea>
       <button class="btn-dourado btn-pequeno" id="btnImportarColado" type="button">Importar dados colados</button>
     </div>
@@ -866,7 +893,10 @@
     g:{base:'g',fator:1}, gr:{base:'g',fator:1}, grama:{base:'g',fator:1}, gramas:{base:'g',fator:1},
     l:{base:'ml',fator:1000}, lt:{base:'ml',fator:1000}, lts:{base:'ml',fator:1000},
     litro:{base:'ml',fator:1000}, litros:{base:'ml',fator:1000},
-    ml:{base:'ml',fator:1}
+    ml:{base:'ml',fator:1},
+    '':{base:'un',fator:1},
+    un:{base:'un',fator:1}, und:{base:'un',fator:1}, unid:{base:'un',fator:1},
+    unidade:{base:'un',fator:1}, unidades:{base:'un',fator:1}
   };
 
   function paraUnidadeBase(valor, unidade){
@@ -974,11 +1004,56 @@
     'pena','penas'
   ]);
 
-  function detectarDelimitador(texto){
-    const primeiraLinha = texto.split(/\r?\n/)[0] || '';
-    if(primeiraLinha.includes('\t')) return '\t';
-    if((primeiraLinha.match(/;/g) || []).length > (primeiraLinha.match(/,/g) || []).length) return ';';
-    return ',';
+  // Dicionário de categorização automática: usado quando um item é importado (colar/CSV/planilha)
+  // sem categoria explícita — tenta reconhecer a categoria pelo nome do produto.
+  // A ordem importa: categorias mais específicas ficam antes das mais genéricas.
+  const CATEGORIAS_AUTOMATICAS = [
+    ['Hortifruti', ['alface','tomate','cebola','batata','cenoura','laranja','banana','maca','maça','limao','limão','uva','mamao','mamão','abacaxi','manga','pera','morango','melancia','melao','melão','abacate','pepino','pimentao','pimentão','couve','brocolis','brócolis','repolho','chuchu','beterraba','mandioca','aipim','vagem','quiabo','abobora','abóbora','abobrinha','rucula','rúcula','espinafre','salsa','cebolinha','coentro','alho','gengibre','kiwi','goiaba','maracuja','maracujá','tangerina','coco']],
+    ['Carnes', ['picanha','frango','carne','file','filé','alcatra','costela','linguica','linguiça','bisteca','maminha','fraldinha','patinho','musculo','músculo','acem','acém','peito de frango','coxa','sobrecoxa','asa de frango','lombo','pernil','bacon','salsicha','carne moida','carne moída','cupim','contra file','contra filé']],
+    ['Peixes e frutos do mar', ['peixe','tilapia','tilápia','salmao','salmão','camarao','camarão','bacalhau','sardinha','atum','lula','polvo','merluza']],
+    ['Frios e laticínios', ['queijo','mussarela','muçarela','presunto','iogurte','manteiga','margarina','requeijao','requeijão','leite','creme de leite','nata','mortadela','peito de peru','ricota','parmesao','parmesão','coalhada']],
+    ['Padaria', ['pao','pão','baguete','croissant','bisnaguinha','torrada','broa']],
+    ['Ovos', ['ovo','ovos']],
+    ['Mercearia', ['arroz','feijao','feijão','macarrao','macarrão','massa','oleo','óleo','acucar','açúcar','sal','farinha','molho de tomate','extrato de tomate','cafe','café','achocolatado','biscoito','bolacha','tempero','vinagre','azeite','maionese','ketchup','mostarda','granola','aveia','lentilha','grao de bico','grão de bico','milho','ervilha','polvilho','fermento','gelatina','pipoca']],
+    ['Bebidas', ['agua','água','refrigerante','suco','cerveja','vinho','energetico','energético','isotonico','isotônico','coca-cola','coca cola','guarana','guaraná','cha','chá']],
+    ['Congelados', ['sorvete','lasanha congelada','nuggets','hamburguer','hambúrguer','pizza congelada','polpa de fruta']],
+    ['Higiene pessoal', ['sabonete','shampoo','xampu','condicionador','pasta de dente','creme dental','escova de dente','absorvente','papel higienico','papel higiênico','desodorante','fio dental','aparelho de barbear','lamina','lâmina','cotonete','fralda']],
+    ['Limpeza', ['detergente','desinfetante','alcool','álcool','sabao','sabão','amaciante','agua sanitaria','água sanitária','esponja','buchinha','pano para piso','pano de chao','pano de chão','vassoura','rodo','lustra moveis','lustra móveis','multiuso','veja','saco de lixo','luva','limpa vidro']],
+    ['Descartáveis', ['guardanapo','copo descartavel','copo descartável','prato descartavel','prato descartável','papel toalha','marmitinha','marmitinhas','vasilha','vasilhas','pote de plastico','pote de plástico','talher descartavel','talher descartável','papel aluminio','papel alumínio','filme pvc']],
+    ['Pet', ['racao','ração','areia para gato','petisco']]
+  ].map(([categoria, palavras]) => [categoria, palavras.map(p => normalizar(p))]);
+
+  // Gera variações simples de singular/plural de uma palavra em português
+  // (ex: "detergente" -> também aceita "detergentes"; "flores" -> também aceita "flor").
+  function variarPlural(palavra){
+    const variantes = new Set([palavra]);
+    if(palavra.endsWith('s')) variantes.add(palavra.slice(0, -1));
+    else variantes.add(palavra + 's');
+    return Array.from(variantes);
+  }
+
+  // Tenta encontrar uma categoria automática para o nome do item, comparando por palavra
+  // inteira (evita, por exemplo, "sal" combinar com "salsicha") e considerando singular/plural.
+  // Retorna '' se não reconhecer.
+  function sugerirCategoriaAutomatica(nomeItem){
+    const nomeNorm = normalizar(nomeItem);
+    const nomeComEspacos = ' ' + nomeNorm + ' ';
+    const tokens = nomeNorm.split(/\s+/).filter(Boolean);
+    for(const [categoria, palavras] of CATEGORIAS_AUTOMATICAS){
+      for(const palavra of palavras){
+        if(palavra.includes(' ')){
+          // frase composta (ex: "pano para piso"): varia o plural só da primeira palavra
+          const partes = palavra.split(' ');
+          const bate = variarPlural(partes[0]).some(v =>
+            nomeComEspacos.includes(' ' + [v, ...partes.slice(1)].join(' ') + ' ')
+          );
+          if(bate) return categoria;
+        } else if(tokens.some(t => variarPlural(palavra).includes(t))){
+          return categoria;
+        }
+      }
+    }
+    return '';
   }
 
   function parseLinhaCSV(linha, delim){
@@ -1000,11 +1075,25 @@
     return resultado.map(s => s.trim());
   }
 
+  // Tenta cada delimitador (tab, ponto e vírgula, vírgula, nessa ordem de confiança) e só aceita
+  // um deles se o cabeçalho resultante realmente bater com algum campo conhecido (ex: "Item").
+  // Isso evita que uma vírgula decimal de preço (ex: "14,90") seja confundida com separador de
+  // coluna e faça o texto ser lido errado como tabela.
   function parseTextoParaLinhas(texto){
-    const delim = detectarDelimitador(texto);
-    return texto.split(/\r?\n/)
-      .filter(l => l.trim() !== '')
-      .map(l => parseLinhaCSV(l, delim));
+    const linhasRaw = texto.split(/\r?\n/).filter(l => l.trim() !== '');
+    if(linhasRaw.length === 0) return [];
+
+    for(const delim of ['\t', ';', ',']){
+      const linhas = linhasRaw.map(l => parseLinhaCSV(l, delim));
+      const colunasHeader = (linhas[0] || []).filter(v => String(v).trim() !== '').length;
+      if(colunasHeader < 2) continue;
+      const mapa = mapearCabecalho(linhas[0]);
+      if(mapa.item !== undefined) return linhas;
+    }
+
+    // nenhum delimitador produziu um cabeçalho reconhecível: devolve cada linha original
+    // como uma única coluna, para ser tratada como lista simples (texto livre)
+    return linhasRaw.map(l => [l]);
   }
 
   function mapearCabecalho(cabecalho){
@@ -1036,16 +1125,20 @@
   }
 
   function mesclarRegistros(registros){
-    let itensNovos = 0, cotacoesNovas = 0;
+    let itensNovos = 0, cotacoesNovas = 0, categoriasAutomaticas = 0;
     registros.forEach(reg => {
       const nomeNorm = normalizar(reg.item);
       let item = itens.find(i => normalizar(i.nome) === nomeNorm);
       if(!item){
         const qtdParse = parsePreco(reg.quantidade);
+        const nomeItem = String(reg.item).trim();
+        const categoriaInformada = reg.categoria ? String(reg.categoria).trim() : '';
+        const categoriaSugerida = categoriaInformada || sugerirCategoriaAutomatica(nomeItem);
+        if(!categoriaInformada && categoriaSugerida) categoriasAutomaticas++;
         item = {
           id: uid(),
-          nome: String(reg.item).trim(),
-          categoria: reg.categoria ? String(reg.categoria).trim() : '',
+          nome: nomeItem,
+          categoria: categoriaSugerida,
           subcategoria: reg.subcategoria ? String(reg.subcategoria).trim() : '',
           marca: reg.marca ? String(reg.marca).trim() : '',
           qtd: !isNaN(qtdParse) && qtdParse > 0 ? qtdParse : 1,
@@ -1068,7 +1161,7 @@
         }
       }
     });
-    return { itensNovos, cotacoesNovas };
+    return { itensNovos, cotacoesNovas, categoriasAutomaticas };
   }
 
   function mostrarResultadoImportar(msg, erro){
@@ -1078,14 +1171,75 @@
     el.style.color = erro ? 'var(--terracota)' : 'var(--oliva)';
   }
 
-  // Reconhece linhas soltas do tipo "20 lts suco de laranja" / "3kg de cereja" / "60 ovos"
+  // Reconhece "linhas de controle" no texto colado — frases que dão contexto às linhas
+  // seguintes, em vez de virarem item. Reconhece:
+  //   "Supermercado Assaí" / "Mercado: Assaí"  -> define o mercado atual
+  //   "cotação de preços" / "adicionar cotação" -> as próximas linhas são "Item: preço"
+  //   "produtos" / "adicionar produtos"/"itens"  -> as próximas linhas são só produtos
+  // Retorna null se a linha não for um comando (isto é, é um item normal).
+  function detectarLinhaControle(linha){
+    const l = String(linha || '').trim();
+    if(!l) return null;
+
+    const mMercado = l.match(/^(?:super\s*mercado|mercado)\s*[:\-]?\s*(.+)$/i);
+    if(mMercado && mMercado[1] && mMercado[1].trim()){
+      return { tipo: 'mercado', valor: mMercado[1].trim() };
+    }
+
+    const norm = normalizar(l);
+    if(/^(cotacao( de precos?)?|cotar precos?|adicionar cotacao)$/.test(norm)){
+      return { tipo: 'modo-cotacao' };
+    }
+    if(/^(produtos?|itens?|adicionar produtos?|adicionar itens?|lista de produtos?|lista de itens?)$/.test(norm)){
+      return { tipo: 'modo-produtos' };
+    }
+    return null;
+  }
+
+  // Parser de linha ciente do "modo" atual (produtos ou cotação). Em modo cotação, aceita
+  // a forma direta "Item: preço" (sem precisar do traço); nos demais casos, delega para
+  // parseLinhaLivre, que já reconhece "Item - marca: preço" etc.
+  function parseLinhaComModo(linha, modo){
+    const original = String(linha || '').trim();
+    if(!original) return null;
+
+    const temTraco = /\s-\s/.test(original) || /\s-\s*$/.test(original);
+    if(temTraco) return parseLinhaLivre(original);
+
+    if(modo === 'cotacao' && original.includes(':')){
+      const idx = original.lastIndexOf(':');
+      const parteItem = original.slice(0, idx).trim();
+      const precoStr = original.slice(idx + 1).trim();
+      const preco = parsePreco(precoStr);
+      if(!isNaN(preco) && preco > 0 && parteItem){
+        const base = parseLinhaLivre(parteItem) || { nome: parteItem, qtd: 1, unidade: '' };
+        return { ...base, cotacao: { qtdCotacao: 1, unidadeCotacao: base.unidade, marca: '', preco } };
+      }
+    }
+
+    return parseLinhaLivre(original);
+  }
+
+  // Reconhece linhas soltas do tipo "20 lts suco de laranja" / "3kg de cereja" / "60 ovos",
+  // e opcionalmente uma cotação embutida depois de " - ", nos formatos:
+  //   "12 detergentes - Limpol: 2,09"              (marca + preço)
+  //   "2 panos para piso - 3 und: 14,90"            (quantidade cotada + unidade + preço)
+  //   "6 buchinhas - Tinindo 4 unidades: 4,45"      (marca + quantidade cotada + unidade + preço)
   function parseLinhaLivre(linha){
     const original = String(linha || '').trim();
     if(!original) return null;
 
-    const match = original.match(/^(\d+(?:[.,]\d+)?)\s*(.*)$/);
+    // remove um traço solto deixado no final da linha (cotação anotada mas não preenchida)
+    const semTracoSolto = original.replace(/\s+-\s*$/, '').trim();
+
+    // separa a descrição do item da parte opcional de cotação, no primeiro " - "
+    const partes = semTracoSolto.split(/\s-\s/);
+    const parteItem = partes[0].trim();
+    const parteCotacao = partes.slice(1).join(' - ').trim();
+
+    const match = parteItem.match(/^(\d+(?:[.,]\d+)?)\s*(.*)$/);
     let qtd = 1;
-    let resto = original;
+    let resto = parteItem;
     if(match && match[2] !== undefined && match[2].trim() !== ''){
       const qtdParse = parsePreco(match[1]);
       qtd = !isNaN(qtdParse) && qtdParse > 0 ? qtdParse : 1;
@@ -1107,19 +1261,86 @@
     nome = nome.replace(/\s+/g, ' ').trim();
     if(nome) nome = nome.charAt(0).toUpperCase() + nome.slice(1);
     if(!nome) return null;
-    return { nome, qtd, unidade };
+
+    // tenta extrair uma cotação embutida: "<marca e/ou quantidade cotada>: <preço>"
+    let cotacao = null;
+    if(parteCotacao){
+      const idxDoisPontos = parteCotacao.lastIndexOf(':');
+      if(idxDoisPontos !== -1){
+        const infoStr = parteCotacao.slice(0, idxDoisPontos).trim();
+        const precoStr = parteCotacao.slice(idxDoisPontos + 1).trim();
+        const preco = parsePreco(precoStr);
+        if(!isNaN(preco) && preco > 0){
+          let qtdCotacao = 1;
+          let unidadeCotacao = unidade;
+          let marca = infoStr;
+          const infoMatch = infoStr.match(/(\d+(?:[.,]\d+)?)\s*([A-Za-zÀ-ÿ]+)/);
+          if(infoMatch){
+            const qtdInfoParse = parsePreco(infoMatch[1]);
+            if(!isNaN(qtdInfoParse) && qtdInfoParse > 0) qtdCotacao = qtdInfoParse;
+            unidadeCotacao = infoMatch[2];
+            marca = (infoStr.slice(0, infoMatch.index) + infoStr.slice(infoMatch.index + infoMatch[0].length)).trim();
+          }
+          cotacao = { qtdCotacao, unidadeCotacao, marca, preco };
+        }
+      }
+    }
+
+    return { nome, qtd, unidade, cotacao };
   }
 
-  function processarListaLivre(texto){
+  // texto: lista simples, uma linha por item. mercadoNome: opcional — se informado, qualquer
+  // cotação embutida encontrada nas linhas (ex: "- Limpol: 2,09") é salva sob esse mercado
+  // (criado automaticamente na lista de mercados se ainda não existir).
+  // texto: lista simples, uma linha por item — mas também aceita "linhas de controle" no meio
+  // dela (ver detectarLinhaControle) para declarar o mercado e alternar entre modo produtos/cotação.
+  // mercadoNome: mercado padrão (vindo do campo da tela), usado enquanto nenhuma linha
+  // "Supermercado X" aparecer no texto; uma linha desse tipo no meio do texto assume o controle
+  // a partir dali.
+  function processarListaLivre(texto, mercadoNome){
     const linhas = String(texto).split(/\r?\n/).map(l => l.trim()).filter(l => l !== '');
     if(linhas.length === 0){
       mostrarResultadoImportar('Não encontrei nenhuma linha para importar.', true);
       return;
     }
-    let itensNovos = 0, itensAtualizados = 0;
+
+    function obterOuCriarMercado(nome){
+      let m = mercados.find(mm => normalizar(mm.nome) === normalizar(nome));
+      if(!m){
+        m = { id: uid(), nome, endereco: '' };
+        mercados.push(m);
+      }
+      return m;
+    }
+
+    const mercadoTrim = (mercadoNome || '').trim();
+    let modoAtual = 'produtos';
+    let mercadoObj = null;
+    let mercadosUsados = new Set();
+    if(mercadoTrim){
+      mercadoObj = obterOuCriarMercado(mercadoTrim);
+      modoAtual = 'cotacao';
+    }
+
+    let itensNovos = 0, itensAtualizados = 0, cotacoesNovas = 0, cotacoesSemMercado = 0, categoriasAutomaticas = 0;
+
     linhas.forEach(linha => {
-      const parsed = parseLinhaLivre(linha);
+      const controle = detectarLinhaControle(linha);
+      if(controle){
+        if(controle.tipo === 'mercado'){
+          mercadoObj = obterOuCriarMercado(controle.valor);
+          modoAtual = 'cotacao'; // declarar o mercado já indica que as próximas linhas são preços
+        } else if(controle.tipo === 'modo-cotacao'){
+          modoAtual = 'cotacao';
+        } else if(controle.tipo === 'modo-produtos'){
+          modoAtual = 'produtos';
+        }
+        return; // linha de controle não vira item
+      }
+
+      const parsed = parseLinhaComModo(linha, modoAtual);
       if(!parsed) return;
+
       const nomeNorm = normalizar(parsed.nome);
       let item = itens.find(i => normalizar(i.nome) === nomeNorm);
       if(item){
@@ -1127,30 +1348,69 @@
         if(!item.unidade && parsed.unidade) item.unidade = parsed.unidade;
         itensAtualizados++;
       } else {
-        itens.push({
+        const categoriaSugerida = sugerirCategoriaAutomatica(parsed.nome);
+        if(categoriaSugerida) categoriasAutomaticas++;
+        item = {
           id: uid(),
           nome: parsed.nome,
-          categoria: '',
+          categoria: categoriaSugerida,
+          subcategoria: '',
+          marca: '',
           qtd: parsed.qtd,
           unidade: parsed.unidade,
           cotacoes: []
-        });
+        };
+        itens.push(item);
         itensNovos++;
       }
+      if(parsed.cotacao){
+        if(mercadoObj){
+          item.cotacoes = item.cotacoes || [];
+          item.cotacoes.push({
+            id: uid(),
+            mercado: mercadoObj.nome,
+            endereco: mercadoObj.endereco || '',
+            marca: parsed.cotacao.marca || '',
+            preco: parsed.cotacao.preco,
+            qtdCotacao: parsed.cotacao.qtdCotacao,
+            unidadeCotacao: parsed.cotacao.unidadeCotacao || item.unidade || ''
+          });
+          cotacoesNovas++;
+          mercadosUsados.add(mercadoObj.nome);
+        } else {
+          cotacoesSemMercado++;
+        }
+      }
     });
+
+    if(mercadosUsados.size > 0){
+      salvarMercados();
+      renderMercados();
+    }
     salvar();
     render();
-    mostrarResultadoImportar(
-      `Lista importada: ${itensNovos} item(ns) novo(s)${itensAtualizados ? `, ${itensAtualizados} somado(s) a itens existentes` : ''}. Agora adicione as cotações de mercado em cada item.`
-    );
+
+    let msg = `Lista importada: ${itensNovos} item(ns) novo(s)${itensAtualizados ? `, ${itensAtualizados} somado(s) a itens existentes` : ''}`;
+    if(cotacoesNovas){
+      const nomesMercados = Array.from(mercadosUsados).map(n => `"${n}"`).join(', ');
+      msg += `, ${cotacoesNovas} cotação(ões) adicionada(s) em ${nomesMercados}`;
+    }
+    msg += '.';
+    if(categoriasAutomaticas > 0) msg += ` ${categoriasAutomaticas} item(ns) categorizado(s) automaticamente — confira e ajuste se precisar.`;
+    if(cotacoesSemMercado > 0){
+      msg += ` Encontrei preço em ${cotacoesSemMercado} linha(s) sem mercado definido — comece a lista com "Supermercado <nome>" ou preencha "Mercado dessas cotações" acima.`;
+    } else if(!cotacoesNovas){
+      msg += ' Agora adicione as cotações de mercado em cada item.';
+    }
+    mostrarResultadoImportar(msg);
   }
 
   // Decide se as linhas formam uma tabela (com cabeçalho reconhecível) ou uma lista simples de compras
-  function processarLinhasOuLivre(linhas){
+  function processarLinhasOuLivre(linhas, mercadoLivre){
     const maxColunas = linhas.reduce((max, l) => Math.max(max, (l || []).filter(v => String(v).trim() !== '').length), 0);
     if(maxColunas <= 1){
       const textos = linhas.map(l => (l && l[0] !== undefined) ? String(l[0]) : '').filter(t => t.trim() !== '');
-      processarListaLivre(textos.join('\n'));
+      processarListaLivre(textos.join('\n'), mercadoLivre);
       return;
     }
     processarLinhas(linhas);
@@ -1171,18 +1431,21 @@
       mostrarResultadoImportar('Nenhuma linha válida encontrada (a coluna "Item" precisa estar preenchida).', true);
       return;
     }
-    const { itensNovos, cotacoesNovas } = mesclarRegistros(registros);
+    const { itensNovos, cotacoesNovas, categoriasAutomaticas } = mesclarRegistros(registros);
     salvar();
     render();
-    mostrarResultadoImportar(`Importado: ${itensNovos} item(ns) novo(s), ${cotacoesNovas} cotação(ões) adicionada(s).`);
+    let msg = `Importado: ${itensNovos} item(ns) novo(s), ${cotacoesNovas} cotação(ões) adicionada(s)`;
+    if(categoriasAutomaticas > 0) msg += ` (${categoriasAutomaticas} categorizado(s) automaticamente — confira e ajuste se precisar)`;
+    msg += '.';
+    mostrarResultadoImportar(msg);
   }
 
-  function processarTexto(texto){
+  function processarTexto(texto, mercadoLivre){
     if(!texto || !texto.trim()){
       mostrarResultadoImportar('Cole algum conteúdo antes de importar.', true);
       return;
     }
-    processarLinhasOuLivre(parseTextoParaLinhas(texto));
+    processarLinhasOuLivre(parseTextoParaLinhas(texto), mercadoLivre);
   }
 
   function processarJSON(dados){
@@ -1363,6 +1626,9 @@
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
         const id = btn.getAttribute('data-remover-item');
+        const item = itens.find(i => i.id === id);
+        const nomeItem = item ? item.nome : 'este item';
+        if(!confirm(`Remover "${nomeItem}" e todas as suas cotações? Essa ação não pode ser desfeita.`)) return;
         itens = itens.filter(i => i.id !== id);
         salvar();
         render();
@@ -1635,6 +1901,15 @@
       .slice()
       .sort((a,b) => a.nome.localeCompare(b.nome, 'pt-BR'))
       .forEach(m => container.appendChild(criarLinhaMercado(m)));
+
+    const sugestoes = document.getElementById('sugestoesMercadoImportacao');
+    if(sugestoes){
+      sugestoes.innerHTML = mercados
+        .slice()
+        .sort((a,b) => a.nome.localeCompare(b.nome, 'pt-BR'))
+        .map(m => `<option value="${escapeHtml(m.nome)}"></option>`)
+        .join('');
+    }
   }
 
   function criarFormEditarItem(item){
@@ -1882,7 +2157,8 @@
 
   document.getElementById('btnImportarColado').addEventListener('click', () => {
     const texto = document.getElementById('areaColar').value;
-    processarTexto(texto);
+    const mercadoLivre = document.getElementById('mercadoImportacaoLivre').value;
+    processarTexto(texto, mercadoLivre);
   });
 
   document.getElementById('inputArquivoImportar').addEventListener('change', (e) => {
