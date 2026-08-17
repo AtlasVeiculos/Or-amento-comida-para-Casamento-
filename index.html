@@ -314,39 +314,6 @@
     margin-top: 2px;
   }
 
-  /* SUMMARY TABLE */
-  table.resumo{
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 13px;
-    background: var(--vinho-2);
-    border: 1px solid var(--borda);
-    border-radius: 12px;
-    overflow: hidden;
-  }
-  table.resumo th{
-    text-align:left;
-    font-family:'IBM Plex Mono', monospace;
-    font-size: 10px;
-    text-transform: uppercase;
-    letter-spacing: .06em;
-    color: var(--marfim-fraca);
-    padding: 12px 14px;
-    border-bottom: 1px solid var(--borda);
-  }
-  table.resumo td{
-    padding: 12px 14px;
-    border-bottom: 1px solid var(--borda);
-  }
-  table.resumo tr:last-child td{ border-bottom: none; }
-  table.resumo tfoot td{
-    font-family:'Fraunces', serif;
-    font-size: 16px;
-    color: var(--dourado);
-    border-bottom: none;
-    padding-top: 16px;
-  }
-
   .vazio{
     text-align:center;
     padding: 40px 20px;
@@ -677,26 +644,6 @@
     <div class="vazio" id="estadoSemResultado" style="display:none;">Nenhum item encontrado para essa busca.</div>
   </section>
 
-  <section>
-    <div class="titulo-secao">Resumo — melhor preço por item</div>
-    <table class="resumo" id="tabelaResumo">
-      <thead>
-        <tr>
-          <th>Item</th>
-          <th>Qtd.</th>
-          <th>Melhor preço</th>
-          <th>Marca</th>
-          <th>Mercado</th>
-          <th>Subtotal</th>
-        </tr>
-      </thead>
-      <tbody id="corpoResumo"></tbody>
-      <tfoot>
-        <tr><td colspan="5">Total</td><td id="totalResumo">R$ 0,00</td></tr>
-      </tfoot>
-    </table>
-  </section>
-
   <div class="rodape-acoes">
     <button class="btn-fantasma" id="btnExportar">Exportar backup (.json)</button>
     <button class="btn-dourado" id="btnAbrirImportar">Importar itens</button>
@@ -708,6 +655,7 @@
     <div class="import-abas">
       <button class="aba-btn ativo" data-aba="colar" type="button">Colar dados</button>
       <button class="aba-btn" data-aba="arquivo" type="button">Enviar arquivo</button>
+      <button class="aba-btn" data-aba="cotacao-lote" type="button">Cotação em lote</button>
     </div>
 
     <div class="aba-conteudo" data-aba-conteudo="colar">
@@ -734,6 +682,21 @@ Marmitinha</pre>
     <div class="aba-conteudo" data-aba-conteudo="arquivo" style="display:none;">
       <p class="aviso" style="margin-top:0;">Aceita planilhas <strong>.xlsx</strong> e <strong>.xls</strong>, arquivos <strong>.csv</strong> e <strong>.json</strong> (tanto uma lista de linhas quanto um backup completo exportado daqui). Use as mesmas colunas do modo "Colar dados". Para PDF, imagem ou Word: abra o arquivo, copie a tabela e cole na aba "Colar dados".</p>
       <input type="file" id="inputArquivoImportar" accept=".csv,.xlsx,.xls,.json">
+    </div>
+
+    <div class="aba-conteudo" data-aba-conteudo="cotacao-lote" style="display:none;">
+      <p class="aviso" style="margin-top:0;">Use isto quando os itens já estiverem cadastrados e você só precisa lançar os preços de um mercado de uma vez — sem recriar os itens. Escolha o mercado, cole uma linha por item no formato <strong>"Item: preço"</strong> (o nome precisa bater com um item já existente na sua lista), e clique em adicionar. Itens que não forem encontrados são avisados, não criados — nem a quantidade dos itens é alterada, só as cotações são adicionadas.</p>
+      <div class="campo" style="margin-bottom:10px;">
+        <label for="loteMercadoSelect">Mercado dessas cotações</label>
+        <select id="loteMercadoSelect">
+          <option value="">Selecione o mercado…</option>
+          <option value="__novo__">+ Novo mercado…</option>
+        </select>
+      </div>
+      <input type="text" id="loteNovoMercadoNome" placeholder="Nome do novo mercado" style="display:none; margin-bottom:8px;">
+      <input type="text" id="loteNovoMercadoEndereco" placeholder="Endereço do novo mercado (opcional)" style="display:none; margin-bottom:10px;">
+      <textarea id="areaLoteCotacao" rows="7" placeholder="Picanha: 42,90&#10;Detergente Limpol: 2,09&#10;Arroz: 24,90"></textarea>
+      <button class="btn-dourado btn-pequeno" id="btnImportarLote" type="button">Adicionar cotações aos itens existentes</button>
     </div>
 
     <div id="resultadoImportar" class="aviso" style="margin-top:12px;"></div>
@@ -1405,6 +1368,78 @@ Marmitinha</pre>
     mostrarResultadoImportar(msg);
   }
 
+  // Adiciona cotações em lote a itens JÁ EXISTENTES na lista, sem criar itens novos.
+  // texto: uma linha por item, no formato "Item: preço" (ou "Item - marca: preço").
+  // mercadoNome: nome do mercado escolhido (ou digitado, se for novo).
+  // enderecoNovoMercado: usado só quando o mercado ainda não existe.
+  function processarCotacaoLote(texto, mercadoNome, enderecoNovoMercado){
+    const mercadoTrim = (mercadoNome || '').trim();
+    if(!mercadoTrim){
+      mostrarResultadoImportar('Escolha ou informe o mercado dessas cotações antes de importar.', true);
+      return;
+    }
+    const linhas = String(texto).split(/\r?\n/).map(l => l.trim()).filter(l => l !== '');
+    if(linhas.length === 0){
+      mostrarResultadoImportar('Cole ao menos uma linha no formato "Item: preço".', true);
+      return;
+    }
+
+    let mercadoObj = mercados.find(m => normalizar(m.nome) === normalizar(mercadoTrim));
+    if(!mercadoObj){
+      mercadoObj = { id: uid(), nome: mercadoTrim, endereco: (enderecoNovoMercado || '').trim() };
+      mercados.push(mercadoObj);
+    }
+
+    let cotacoesNovas = 0;
+    const naoEncontrados = [];
+    const semPreco = [];
+
+    linhas.forEach(linha => {
+      if(detectarLinhaControle(linha)) return; // ignora linhas de comando, se alguém colar por engano
+      const parsed = parseLinhaComModo(linha, 'cotacao');
+      if(!parsed || !parsed.cotacao){
+        semPreco.push(linha);
+        return;
+      }
+      const nomeNorm = normalizar(parsed.nome);
+      const item = itens.find(i => normalizar(i.nome) === nomeNorm);
+      if(!item){
+        naoEncontrados.push(parsed.nome);
+        return;
+      }
+      item.cotacoes = item.cotacoes || [];
+      item.cotacoes.push({
+        id: uid(),
+        mercado: mercadoObj.nome,
+        endereco: mercadoObj.endereco || '',
+        marca: parsed.cotacao.marca || '',
+        preco: parsed.cotacao.preco,
+        qtdCotacao: parsed.cotacao.qtdCotacao,
+        unidadeCotacao: parsed.cotacao.unidadeCotacao || item.unidade || ''
+      });
+      cotacoesNovas++;
+    });
+
+    salvarMercados();
+    renderMercados();
+    salvar();
+    render();
+
+    let msg = `${cotacoesNovas} cotação(ões) adicionada(s) em "${mercadoObj.nome}".`;
+    if(naoEncontrados.length > 0){
+      const lista = naoEncontrados.slice(0, 8).join(', ') + (naoEncontrados.length > 8 ? '…' : '');
+      msg += ` ${naoEncontrados.length} item(ns) não encontrado(s) na sua lista (confira o nome, eles não foram criados): ${lista}.`;
+    }
+    if(semPreco.length > 0){
+      msg += ` ${semPreco.length} linha(s) ignorada(s) por não ter um preço reconhecido no formato "Item: preço".`;
+    }
+    mostrarResultadoImportar(msg, cotacoesNovas === 0);
+
+    if(cotacoesNovas > 0){
+      document.getElementById('areaLoteCotacao').value = '';
+    }
+  }
+
   // Decide se as linhas formam uma tabela (com cabeçalho reconhecível) ou uma lista simples de compras
   function processarLinhasOuLivre(linhas, mercadoLivre){
     const maxColunas = linhas.reduce((max, l) => Math.max(max, (l || []).filter(v => String(v).trim() !== '').length), 0);
@@ -1502,8 +1537,6 @@ Marmitinha</pre>
 
     let totalGeral = 0;
     let mercadosUnicos = new Set();
-    const corpoResumo = document.getElementById('corpoResumo');
-    corpoResumo.innerHTML = '';
 
     const { grupos, categoriasOrdenadas } = construirGrupos();
 
@@ -1595,18 +1628,6 @@ Marmitinha</pre>
           card.appendChild(cabecalho);
           card.appendChild(corpo);
           destino.appendChild(card);
-
-          // linha resumo
-          const tr = document.createElement('tr');
-          tr.innerHTML = `
-            <td>${escapeHtml(item.nome)}</td>
-            <td class="preco-mono">${qtd} ${escapeHtml(item.unidade || 'un')}</td>
-            <td class="preco-mono">${melhor ? `${formatarMoeda(melhor.preco)}<span class="nota-cotacao">p/ ${escapeHtml(String((melhor.qtdCotacao && melhor.qtdCotacao > 0) ? melhor.qtdCotacao : 1))} ${escapeHtml(melhor.unidadeCotacao || item.unidade || 'un')}</span>` : '—'}</td>
-            <td>${melhor && melhor.marca ? escapeHtml(melhor.marca) : '—'}</td>
-            <td>${melhor ? escapeHtml(melhor.mercado) : '—'}</td>
-            <td class="preco-mono">${melhor ? formatarMoeda(subtotal) : '—'}</td>
-          `;
-          corpoResumo.appendChild(tr);
         }); // fim itens da subcategoria
       }); // fim subcategorias
 
@@ -1614,7 +1635,6 @@ Marmitinha</pre>
     }); // fim categorias
 
     document.getElementById('totalGeral').textContent = formatarMoeda(totalGeral);
-    document.getElementById('totalResumo').textContent = formatarMoeda(totalGeral);
     document.getElementById('totalItens').textContent = itens.length;
     document.getElementById('totalMercados').textContent = mercadosUnicos.size;
 
@@ -1910,6 +1930,18 @@ Marmitinha</pre>
         .map(m => `<option value="${escapeHtml(m.nome)}"></option>`)
         .join('');
     }
+
+    const selectLote = document.getElementById('loteMercadoSelect');
+    if(selectLote){
+      const valorAtual = selectLote.value;
+      const opcoes = mercados
+        .slice()
+        .sort((a,b) => a.nome.localeCompare(b.nome, 'pt-BR'))
+        .map(m => `<option value="${m.id}">${escapeHtml(m.nome)}</option>`)
+        .join('');
+      selectLote.innerHTML = `<option value="">Selecione o mercado…</option>${opcoes}<option value="__novo__">+ Novo mercado…</option>`;
+      if(Array.from(selectLote.options).some(o => o.value === valorAtual)) selectLote.value = valorAtual;
+    }
   }
 
   function criarFormEditarItem(item){
@@ -2159,6 +2191,28 @@ Marmitinha</pre>
     const texto = document.getElementById('areaColar').value;
     const mercadoLivre = document.getElementById('mercadoImportacaoLivre').value;
     processarTexto(texto, mercadoLivre);
+  });
+
+  document.getElementById('loteMercadoSelect').addEventListener('change', () => {
+    const ehNovo = document.getElementById('loteMercadoSelect').value === '__novo__';
+    document.getElementById('loteNovoMercadoNome').style.display = ehNovo ? 'block' : 'none';
+    document.getElementById('loteNovoMercadoEndereco').style.display = ehNovo ? 'block' : 'none';
+  });
+
+  document.getElementById('btnImportarLote').addEventListener('click', () => {
+    const select = document.getElementById('loteMercadoSelect');
+    const selecionado = select.value;
+    let mercadoNome = '';
+    let enderecoNovo = '';
+    if(selecionado === '__novo__'){
+      mercadoNome = document.getElementById('loteNovoMercadoNome').value.trim();
+      enderecoNovo = document.getElementById('loteNovoMercadoEndereco').value.trim();
+    } else if(selecionado){
+      const m = mercados.find(mm => mm.id === selecionado);
+      mercadoNome = m ? m.nome : '';
+    }
+    const texto = document.getElementById('areaLoteCotacao').value;
+    processarCotacaoLote(texto, mercadoNome, enderecoNovo);
   });
 
   document.getElementById('inputArquivoImportar').addEventListener('change', (e) => {
