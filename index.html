@@ -206,11 +206,16 @@
     overflow: hidden;
   }
   .item-cabecalho{
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 16px 18px;
+    cursor: pointer;
+  }
+  .cabecalho-topo{
     display:flex;
     justify-content: space-between;
     align-items: center;
-    padding: 16px 18px;
-    cursor: pointer;
     gap: 12px;
   }
   .checkbox-comprado{
@@ -247,6 +252,57 @@
   }
   .item-preco-resumo .mercado{ font-size: 12px; color: var(--marfim-fraca); }
   .sem-cotacao{ font-size: 12px; color: var(--marfim-fraca); font-style: italic; }
+
+  .badge-compra{
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    font-size: 12px;
+    color: var(--oliva);
+    font-family: 'IBM Plex Mono', monospace;
+    background: rgba(140,163,110,0.12);
+    border: 1px solid rgba(140,163,110,0.35);
+    border-radius: 8px;
+    padding: 6px 10px;
+  }
+  .badge-compra button{
+    background: none;
+    border: none;
+    color: var(--dourado);
+    text-decoration: underline;
+    font-size: 11px;
+    cursor: pointer;
+    padding: 0;
+    font-family: 'Work Sans', sans-serif;
+  }
+  .quick-cotacao{
+    display: flex;
+    gap: 6px;
+  }
+  .quick-cotacao input{
+    flex: 1;
+    min-width: 0;
+    height: 36px;
+    padding: 0 10px;
+    font-size: 13px;
+    background: var(--vinho);
+    border: 1px solid var(--dourado-fraco);
+    border-radius: 8px;
+    color: var(--marfim);
+  }
+  .quick-cotacao button{
+    height: 36px;
+    padding: 0 14px;
+    border-radius: 8px;
+    border: none;
+    background: var(--dourado);
+    color: var(--vinho);
+    font-weight: 600;
+    font-size: 13px;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
 
   .toggle-ocultar-comprados{
     display: flex;
@@ -334,6 +390,30 @@
     align-items: end;
     margin-bottom: 16px;
   }
+  .painel-compra{
+    background: rgba(140,163,110,0.08);
+    border: 1px solid rgba(140,163,110,0.35);
+    border-radius: 10px;
+    padding: 14px;
+    margin-bottom: 16px;
+  }
+  .titulo-painel-compra{
+    font-family: 'Fraunces', serif;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--oliva);
+    margin-bottom: 10px;
+  }
+  .painel-compra select{
+    width: 100%;
+    margin-bottom: 10px;
+  }
+  .grid-painel-compra{
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 8px;
+    margin-bottom: 10px;
+  }
   .nota-cotacao{
     font-size: 11px;
     color: var(--marfim-fraca);
@@ -355,6 +435,31 @@
     border-radius: 12px;
     font-size: 14px;
   }
+
+  .barra-mercado-atual{
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    background: var(--vinho-2);
+    border: 1px solid var(--dourado-fraco);
+    border-radius: 10px;
+    padding: 10px 14px;
+    margin-bottom: 14px;
+  }
+  .label-mercado-atual{
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    color: var(--dourado);
+    white-space: nowrap;
+  }
+  .barra-mercado-atual select,
+  .barra-mercado-atual input{
+    height: 38px;
+    font-size: 13px;
+  }
+  .barra-mercado-atual select{ min-width: 170px; flex: 0 1 220px; }
+  .barra-mercado-atual input{ flex: 1 1 160px; }
 
   .controles-lista{
     display: flex;
@@ -664,6 +769,18 @@
 
   <section>
     <div class="titulo-secao">Itens e cotações</div>
+
+    <div class="barra-mercado-atual">
+      <span class="label-mercado-atual">📍 Cotando agora em:</span>
+      <select id="mercadoAtualSelect">
+        <option value="">Selecione o mercado…</option>
+        <option value="__novo__">+ Novo mercado…</option>
+      </select>
+      <input type="text" id="mercadoAtualNovoNome" placeholder="Nome do novo mercado" style="display:none;">
+      <input type="text" id="mercadoAtualNovoEndereco" placeholder="Endereço (opcional)" style="display:none;">
+      <button type="button" class="btn-dourado btn-pequeno" id="btnDefinirMercadoAtual" style="display:none;">Definir</button>
+    </div>
+
     <div class="controles-lista">
       <div class="campo-busca">
         <input type="text" id="campoBusca" placeholder="Buscar item, categoria, marca ou mercado…">
@@ -758,6 +875,7 @@ Marmitinha</pre>
   const CHAVE_LOCAL_MERCADOS = 'orcamento-casamento-mercados-v1';
   let itens = [];
   let mercados = [];
+  let mercadoAtualId = ''; // mercado selecionado na barra "Cotando agora em" — não é salvo, dura a sessão
   let ignorarProximaAtualizacaoRemota = false;
 
   // ============================================================
@@ -886,6 +1004,38 @@ Marmitinha</pre>
 
   function formatarMoeda(valor){
     return (valor || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  }
+
+  // Monta o resumo curto exibido no card quando o item está marcado como comprado
+  function formatarInfoCompra(item){
+    const info = item.compraInfo || {};
+    const partes = [];
+    if(info.qtd) partes.push(`${info.qtd} ${item.unidade || 'un'}`);
+    if(info.mercado) partes.push(info.mercado);
+    if(info.marca) partes.push(info.marca);
+    if(info.preco) partes.push(formatarMoeda(info.preco));
+    return partes.length ? escapeHtml(partes.join(' • ')) : 'sem detalhes ainda';
+  }
+
+  // Adiciona uma cotação simples (sem marca, quantidade cotada = 1) usando o mercado
+  // selecionado na barra "Cotando agora em" — usada pelo campo de preço rápido no card.
+  function adicionarCotacaoRapida(item, inputEl){
+    const mercadoObj = mercadoAtualId ? mercados.find(m => m.id === mercadoAtualId) : null;
+    if(!mercadoObj) return;
+    const preco = parsePreco(inputEl.value);
+    if(isNaN(preco) || preco <= 0) return;
+    item.cotacoes = item.cotacoes || [];
+    item.cotacoes.push({
+      id: uid(),
+      mercado: mercadoObj.nome,
+      endereco: mercadoObj.endereco || '',
+      marca: '',
+      preco,
+      qtdCotacao: 1,
+      unidadeCotacao: item.unidade || ''
+    });
+    salvar();
+    render();
   }
 
   // ---------- CONVERSÃO DE UNIDADES DA COTAÇÃO ----------
@@ -1638,6 +1788,7 @@ Marmitinha</pre>
 
     let totalGeral = 0;
     let mercadosUnicos = new Set();
+    const mercadoAtualObj = mercadoAtualId ? mercados.find(m => m.id === mercadoAtualId) : null;
 
     const { grupos, categoriasOrdenadas } = construirGrupos();
 
@@ -1695,28 +1846,77 @@ Marmitinha</pre>
             ? escapeHtml(item.categoria) + (item.subcategoria ? ` › ${escapeHtml(item.subcategoria)}` : '')
             : 'Sem categoria';
           cabecalho.innerHTML = `
-            <label class="checkbox-comprado" title="Marcar como já comprado">
-              <input type="checkbox" data-marcar-comprado="${item.id}" ${item.comprado ? 'checked' : ''}>
-            </label>
-            <div class="item-info">
-              <div class="item-nome">${escapeHtml(item.nome)}${item.marca ? ` <span class="item-marca">${escapeHtml(item.marca)}</span>` : ''}</div>
-              <div class="item-meta">${rotuloCategoria} · ${qtd} ${escapeHtml(item.unidade || 'un')}</div>
-            </div>
-            ${melhor ? `
-              <div class="item-preco-resumo">
-                <div class="preco">${formatarMoeda(subtotal)}</div>
-                <div class="mercado">${escapeHtml(melhor.mercado)}</div>
+            <div class="cabecalho-topo">
+              <label class="checkbox-comprado" title="Marcar como já comprado">
+                <input type="checkbox" data-marcar-comprado="${item.id}" ${item.comprado ? 'checked' : ''}>
+              </label>
+              <div class="item-info">
+                <div class="item-nome">${escapeHtml(item.nome)}${item.marca ? ` <span class="item-marca">${escapeHtml(item.marca)}</span>` : ''}</div>
+                <div class="item-meta">${rotuloCategoria} · ${qtd} ${escapeHtml(item.unidade || 'un')}</div>
               </div>
-            ` : `<div class="sem-cotacao">Sem cotação</div>`}
+              ${melhor ? `
+                <div class="item-preco-resumo">
+                  <div class="preco">${formatarMoeda(subtotal)}</div>
+                  <div class="mercado">${escapeHtml(melhor.mercado)}</div>
+                </div>
+              ` : `<div class="sem-cotacao">Sem cotação</div>`}
+            </div>
+            ${item.comprado ? `
+              <div class="badge-compra">
+                <span>✓ Comprado: ${formatarInfoCompra(item)}</span>
+                <button type="button" data-editar-compra="${item.id}">editar</button>
+              </div>
+            ` : ''}
+            ${mercadoAtualObj ? `
+              <div class="quick-cotacao">
+                <input type="text" inputmode="decimal" placeholder="Preço em ${escapeHtml(mercadoAtualObj.nome)} (R$)" data-quick-preco="${item.id}">
+                <button type="button" data-quick-add="${item.id}">Adicionar</button>
+              </div>
+            ` : ''}
           `;
           cabecalho.querySelector('[data-marcar-comprado]').addEventListener('click', (e) => {
             e.stopPropagation();
           });
           cabecalho.querySelector('[data-marcar-comprado]').addEventListener('change', (e) => {
-            item.comprado = e.target.checked;
+            const marcado = e.target.checked;
+            item.comprado = marcado;
+            if(marcado){
+              const melhorAtual = melhorCotacao(item);
+              item.compraInfo = melhorAtual ? {
+                mercado: melhorAtual.mercado,
+                marca: melhorAtual.marca || '',
+                preco: melhorAtual.preco,
+                qtd: item.qtd || 1
+              } : { mercado: '', marca: '', preco: 0, qtd: item.qtd || 1 };
+            } else {
+              item.compraInfo = null;
+            }
             salvar();
             render();
           });
+          const btnEditarCompra = cabecalho.querySelector('[data-editar-compra]');
+          if(btnEditarCompra){
+            btnEditarCompra.addEventListener('click', (e) => {
+              e.stopPropagation();
+              corpo.classList.add('aberto');
+            });
+          }
+          const inputQuickPreco = cabecalho.querySelector('[data-quick-preco]');
+          const btnQuickAdd = cabecalho.querySelector('[data-quick-add]');
+          if(inputQuickPreco && btnQuickAdd){
+            inputQuickPreco.addEventListener('click', e => e.stopPropagation());
+            inputQuickPreco.addEventListener('keydown', (e) => {
+              e.stopPropagation();
+              if(e.key === 'Enter'){
+                e.preventDefault();
+                adicionarCotacaoRapida(item, inputQuickPreco);
+              }
+            });
+            btnQuickAdd.addEventListener('click', (e) => {
+              e.stopPropagation();
+              adicionarCotacaoRapida(item, inputQuickPreco);
+            });
+          }
           cabecalho.addEventListener('click', () => {
             corpo.classList.toggle('aberto');
           });
@@ -1725,6 +1925,7 @@ Marmitinha</pre>
           corpo.className = 'item-corpo';
 
           corpo.appendChild(criarFormEditarItem(item));
+          if(item.comprado) corpo.appendChild(criarPainelCompra(item));
           corpo.appendChild(criarTabelaCotacoes(item, melhor));
           corpo.appendChild(criarFormCotacao(item));
 
@@ -2060,6 +2261,83 @@ Marmitinha</pre>
       selectLote.innerHTML = `<option value="">Selecione o mercado…</option>${opcoes}<option value="__novo__">+ Novo mercado…</option>`;
       if(Array.from(selectLote.options).some(o => o.value === valorAtual)) selectLote.value = valorAtual;
     }
+
+    const selectAtual = document.getElementById('mercadoAtualSelect');
+    if(selectAtual){
+      const opcoesAtual = mercados
+        .slice()
+        .sort((a,b) => a.nome.localeCompare(b.nome, 'pt-BR'))
+        .map(m => `<option value="${m.id}">${escapeHtml(m.nome)}</option>`)
+        .join('');
+      selectAtual.innerHTML = `<option value="">Selecione o mercado…</option>${opcoesAtual}<option value="__novo__">+ Novo mercado…</option>`;
+      // se o mercado atualmente escolhido ainda existir, mantém selecionado; senão, limpa
+      if(mercadoAtualId && mercados.some(m => m.id === mercadoAtualId)){
+        selectAtual.value = mercadoAtualId;
+      } else {
+        mercadoAtualId = '';
+        selectAtual.value = '';
+      }
+    }
+  }
+
+  // Painel de detalhes da compra (mercado, marca, preço pago e quantidade comprada),
+  // exibido dentro do card só quando o item está marcado como comprado.
+  function criarPainelCompra(item){
+    const painel = document.createElement('div');
+    painel.className = 'painel-compra';
+    const info = item.compraInfo || {};
+    const opcoesCotacoes = (item.cotacoes || []).map(c =>
+      `<option value="${c.id}">${escapeHtml(c.mercado)}${c.marca ? ' — ' + escapeHtml(c.marca) : ''} — ${formatarMoeda(c.preco)}</option>`
+    ).join('');
+    painel.innerHTML = `
+      <div class="titulo-painel-compra">📦 Detalhes da compra</div>
+      ${opcoesCotacoes ? `
+        <select data-campo="origemCotacao">
+          <option value="">— preencher a partir de uma cotação —</option>
+          ${opcoesCotacoes}
+        </select>
+      ` : ''}
+      <div class="grid-painel-compra">
+        <input type="text" data-campo="mercado" placeholder="Mercado" value="${escapeHtml(info.mercado || '')}">
+        <input type="text" data-campo="marca" placeholder="Marca" value="${escapeHtml(info.marca || '')}">
+        <input type="number" step="0.01" min="0" data-campo="preco" placeholder="Preço pago (R$)" value="${info.preco || ''}">
+        <input type="number" step="0.01" min="0" data-campo="qtd" placeholder="Quantidade comprada" value="${info.qtd != null ? info.qtd : (item.qtd || 1)}">
+      </div>
+      <button type="button" class="btn-dourado btn-pequeno" data-campo="salvar">Salvar detalhes da compra</button>
+    `;
+    painel.addEventListener('click', e => e.stopPropagation());
+
+    const selectOrigem = painel.querySelector('[data-campo="origemCotacao"]');
+    if(selectOrigem){
+      selectOrigem.addEventListener('change', () => {
+        const cot = (item.cotacoes || []).find(c => c.id === selectOrigem.value);
+        if(!cot) return;
+        painel.querySelector('[data-campo="mercado"]').value = cot.mercado || '';
+        painel.querySelector('[data-campo="marca"]').value = cot.marca || '';
+        painel.querySelector('[data-campo="preco"]').value = cot.preco || '';
+      });
+    }
+
+    painel.querySelector('[data-campo="salvar"]').addEventListener('click', () => {
+      const mercadoVal = painel.querySelector('[data-campo="mercado"]').value.trim();
+      const marcaVal = painel.querySelector('[data-campo="marca"]').value.trim();
+      const precoVal = parseFloat(painel.querySelector('[data-campo="preco"]').value);
+      const qtdVal = parseFloat(painel.querySelector('[data-campo="qtd"]').value);
+      item.compraInfo = {
+        mercado: mercadoVal,
+        marca: marcaVal,
+        preco: !isNaN(precoVal) ? precoVal : 0,
+        qtd: !isNaN(qtdVal) && qtdVal > 0 ? qtdVal : (item.qtd || 1)
+      };
+      salvar();
+      render();
+      setTimeout(() => {
+        const card = document.querySelector(`[data-item-id="${item.id}"]`);
+        if(card) card.querySelector('.item-corpo').classList.add('aberto');
+      });
+    });
+
+    return painel;
   }
 
   function criarFormEditarItem(item){
@@ -2178,6 +2456,9 @@ Marmitinha</pre>
     if(mercados.length === 0){
       selectMercado.value = '__novo__';
       alternarCamposNovoMercado();
+    } else if(mercadoAtualId && mercados.some(m => m.id === mercadoAtualId)){
+      // pré-seleciona o mercado atual (barra "Cotando agora em"), pra não precisar escolher de novo
+      selectMercado.value = mercadoAtualId;
     }
 
     form.addEventListener('submit', (e) => {
@@ -2316,6 +2597,38 @@ Marmitinha</pre>
     const ehNovo = document.getElementById('loteMercadoSelect').value === '__novo__';
     document.getElementById('loteNovoMercadoNome').style.display = ehNovo ? 'block' : 'none';
     document.getElementById('loteNovoMercadoEndereco').style.display = ehNovo ? 'block' : 'none';
+  });
+
+  document.getElementById('mercadoAtualSelect').addEventListener('change', () => {
+    const select = document.getElementById('mercadoAtualSelect');
+    const ehNovo = select.value === '__novo__';
+    document.getElementById('mercadoAtualNovoNome').style.display = ehNovo ? 'inline-block' : 'none';
+    document.getElementById('mercadoAtualNovoEndereco').style.display = ehNovo ? 'inline-block' : 'none';
+    document.getElementById('btnDefinirMercadoAtual').style.display = ehNovo ? 'inline-block' : 'none';
+    if(!ehNovo){
+      mercadoAtualId = select.value;
+      render();
+    }
+  });
+
+  document.getElementById('btnDefinirMercadoAtual').addEventListener('click', () => {
+    const nome = document.getElementById('mercadoAtualNovoNome').value.trim();
+    if(!nome) return;
+    const endereco = document.getElementById('mercadoAtualNovoEndereco').value.trim();
+    let mercadoObj = mercados.find(m => normalizar(m.nome) === normalizar(nome));
+    if(!mercadoObj){
+      mercadoObj = { id: uid(), nome, endereco };
+      mercados.push(mercadoObj);
+      salvarMercados();
+    }
+    mercadoAtualId = mercadoObj.id;
+    renderMercados();
+    document.getElementById('mercadoAtualNovoNome').value = '';
+    document.getElementById('mercadoAtualNovoEndereco').value = '';
+    document.getElementById('mercadoAtualNovoNome').style.display = 'none';
+    document.getElementById('mercadoAtualNovoEndereco').style.display = 'none';
+    document.getElementById('btnDefinirMercadoAtual').style.display = 'none';
+    render();
   });
 
   document.getElementById('btnImportarLote').addEventListener('click', () => {
