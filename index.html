@@ -213,8 +213,24 @@
     cursor: pointer;
     gap: 12px;
   }
-  .item-info{ display:flex; flex-direction:column; gap:2px; }
+  .checkbox-comprado{
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+  }
+  .checkbox-comprado input{
+    width: 22px;
+    height: 22px;
+    margin: 0;
+    accent-color: var(--dourado);
+    cursor: pointer;
+  }
+  .item-info{ display:flex; flex-direction:column; gap:2px; min-width: 0; }
   .item-nome{ font-family:'Fraunces', serif; font-size: 18px; font-weight: 600; }
+  .item-card.comprado{ opacity: 0.6; }
+  .item-card.comprado .item-nome{ text-decoration: line-through; }
+  .item-card.comprado .item-preco-resumo .preco{ color: var(--marfim-fraca); }
   .item-marca{
     font-family:'Work Sans', sans-serif;
     font-size: 13px;
@@ -231,6 +247,23 @@
   }
   .item-preco-resumo .mercado{ font-size: 12px; color: var(--marfim-fraca); }
   .sem-cotacao{ font-size: 12px; color: var(--marfim-fraca); font-style: italic; }
+
+  .toggle-ocultar-comprados{
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: var(--marfim-fraca);
+    cursor: pointer;
+    padding: 0 4px;
+    user-select: none;
+  }
+  .toggle-ocultar-comprados input{
+    width: 18px;
+    height: 18px;
+    accent-color: var(--dourado);
+    cursor: pointer;
+  }
 
   .item-corpo{
     border-top: 1px solid var(--borda);
@@ -571,6 +604,10 @@
         <div class="label">Mercados cotados</div>
         <div class="valor" id="totalMercados">0</div>
       </div>
+      <div class="total-card">
+        <div class="label">Já comprados</div>
+        <div class="valor" id="totalComprados">0/0</div>
+      </div>
     </div>
   </header>
 
@@ -638,6 +675,10 @@
       <select id="filtroSubcategoria" title="Filtrar por subcategoria" disabled>
         <option value="">Todas as subcategorias</option>
       </select>
+      <label class="toggle-ocultar-comprados">
+        <input type="checkbox" id="ocultarComprados">
+        <span>Ocultar já comprados</span>
+      </label>
     </div>
     <div id="listaItens"></div>
     <div class="vazio" id="estadoVazio">Nenhum item cadastrado ainda. Adicione o primeiro item acima.</div>
@@ -1640,10 +1681,11 @@ Marmitinha</pre>
 
           // card
           const card = document.createElement('div');
-          card.className = 'item-card';
+          card.className = 'item-card' + (item.comprado ? ' comprado' : '');
           card.dataset.itemId = item.id;
           card.dataset.categoria = normalizar(categoria);
           card.dataset.subcategoria = normalizar(subcategoria);
+          card.dataset.comprado = item.comprado ? '1' : '0';
           const mercadosItem = (item.cotacoes || []).map(c => c.mercado).join(' ');
           card.dataset.busca = normalizar(`${item.nome} ${item.categoria || ''} ${item.subcategoria || ''} ${item.marca || ''} ${mercadosItem}`);
 
@@ -1653,6 +1695,9 @@ Marmitinha</pre>
             ? escapeHtml(item.categoria) + (item.subcategoria ? ` › ${escapeHtml(item.subcategoria)}` : '')
             : 'Sem categoria';
           cabecalho.innerHTML = `
+            <label class="checkbox-comprado" title="Marcar como já comprado">
+              <input type="checkbox" data-marcar-comprado="${item.id}" ${item.comprado ? 'checked' : ''}>
+            </label>
             <div class="item-info">
               <div class="item-nome">${escapeHtml(item.nome)}${item.marca ? ` <span class="item-marca">${escapeHtml(item.marca)}</span>` : ''}</div>
               <div class="item-meta">${rotuloCategoria} · ${qtd} ${escapeHtml(item.unidade || 'un')}</div>
@@ -1664,6 +1709,14 @@ Marmitinha</pre>
               </div>
             ` : `<div class="sem-cotacao">Sem cotação</div>`}
           `;
+          cabecalho.querySelector('[data-marcar-comprado]').addEventListener('click', (e) => {
+            e.stopPropagation();
+          });
+          cabecalho.querySelector('[data-marcar-comprado]').addEventListener('change', (e) => {
+            item.comprado = e.target.checked;
+            salvar();
+            render();
+          });
           cabecalho.addEventListener('click', () => {
             corpo.classList.toggle('aberto');
           });
@@ -1697,6 +1750,8 @@ Marmitinha</pre>
     document.getElementById('totalGeral').textContent = formatarMoeda(totalGeral);
     document.getElementById('totalItens').textContent = itens.length;
     document.getElementById('totalMercados').textContent = mercadosUnicos.size;
+    const totalCompradosCount = itens.filter(i => i.comprado).length;
+    document.getElementById('totalComprados').textContent = `${totalCompradosCount}/${itens.length}`;
 
     atualizarSugestoesCategoria();
     aplicarFiltro();
@@ -1817,6 +1872,8 @@ Marmitinha</pre>
     const categoriaSelecionada = selectCategoria ? selectCategoria.value : '';
     const selectSubcategoria = document.getElementById('filtroSubcategoria');
     const subcategoriaSelecionada = selectSubcategoria ? selectSubcategoria.value : '';
+    const ocultarCompradosEl = document.getElementById('ocultarComprados');
+    const ocultarComprados = ocultarCompradosEl ? ocultarCompradosEl.checked : false;
     const cards = document.querySelectorAll('#listaItens .item-card');
     const contagem = document.getElementById('buscaContagem');
     const semResultado = document.getElementById('estadoSemResultado');
@@ -1826,7 +1883,8 @@ Marmitinha</pre>
     cards.forEach(card => {
       const bate = (!categoriaSelecionada || card.dataset.categoria === categoriaSelecionada)
         && (!subcategoriaSelecionada || card.dataset.subcategoria === subcategoriaSelecionada)
-        && (!termo || (card.dataset.busca || '').includes(termo));
+        && (!termo || (card.dataset.busca || '').includes(termo))
+        && (!ocultarComprados || card.dataset.comprado !== '1');
       card.classList.toggle('oculto', !bate);
       if(bate) visiveis++;
     });
@@ -1839,7 +1897,7 @@ Marmitinha</pre>
       grupo.classList.toggle('oculto', !grupo.querySelector('.item-card:not(.oculto)'));
     });
 
-    const filtroAtivo = !!(termo || categoriaSelecionada || subcategoriaSelecionada);
+    const filtroAtivo = !!(termo || categoriaSelecionada || subcategoriaSelecionada || ocultarComprados);
     if(contagem) contagem.textContent = filtroAtivo ? `${visiveis} de ${cards.length} item(ns)` : '';
     if(semResultado) semResultado.style.display = (filtroAtivo && itens.length > 0 && visiveis === 0) ? 'block' : 'none';
     if(estadoVazio && filtroAtivo) estadoVazio.style.display = 'none';
@@ -2185,6 +2243,7 @@ Marmitinha</pre>
     aplicarFiltro();
   });
   document.getElementById('filtroSubcategoria').addEventListener('change', aplicarFiltro);
+  document.getElementById('ocultarComprados').addEventListener('change', aplicarFiltro);
 
   // ---------- EVENTOS GERAIS ----------
   document.getElementById('formNovoMercado').addEventListener('submit', (e) => {
